@@ -744,6 +744,19 @@ and the wrong thing to do silently, so the setup screen says which before the
 button is pressed — 開始本場 becomes 接續本場 or 重新開啟並開始 — and preloads
 the attendance list from that 場次 rather than from the site's whole book.
 
+**When that rule started firing on every second 場次, the fix was the input side,
+never the rule.** With a hardcoded two-item 據點 list and a three-year picker,
+a 據點 wanting two concurrent 場次 collided immediately — and the tempting repair
+is to allow a second session for the same key, which is precisely the
+misattribution case. So instead: **據點 are created and named by staff on the
+setup screen**, and 年度 is a free field rather than a three-option picker. A 前測
+at one 據點 and a 後測 at another are different keys and both stay open. 期 stays
+a fixed 1–3, because the funding rule really is a maximum of three per year.
+
+The collision copy also names the way out — 若要同時進行另一個場次，請改用不同的
+據點、年度或期別 — so a facilitator who hits it is told how to get what they
+wanted rather than only what they cannot have.
+
 ### The sheet says what it covers
 
 With several 場次 open on one device, 前後測時間紀錄表 is no longer enough to
@@ -754,6 +767,33 @@ dates and attendance, and which 場次 the sheet was produced from.
 That line costs the sheet **one row of one-page capacity** — 14 participants down
 to 13, measured by rendering to A4 and counting pages, not estimated. A first
 draft boxed it and cost two. The minimum funded class is 10.
+
+## Deleting, and the boundary that does not move
+
+Two destructive acts exist, and both are coarse on purpose:
+
+- **Delete a 場次** — from its row on the session list, confirmed, with the 場次
+  named and its record count stated. Takes the session, its records, and the 期
+  if that was its last 場次. The 據點 stays: a 據點 outlives any 期.
+- **Reset everything** — from the setup screen, confirmed. Sites, enrolment,
+  sessions, records, example data.
+
+**There is no way to delete or edit an individual trial record, and there must
+never be one.** A record once written is never altered; a miscount is fixed by
+APPENDING a correction that points at the original, and both survive forever.
+
+That is not a storage preference. PRODUCT.md principle 5 says a facilitator who
+cannot fix the machine will either stop using it or start gaming it, and the
+reason correcting can feel ordinary is precisely that it destroys nothing. The
+moment a single record became deletable, "correct it" and "delete the
+inconvenient one" would be the same gesture, and no number on the printed sheet
+could be defended afterwards. Throwing away a whole 場次 is a different act: it
+is visible, it is named in a confirmation, and it removes a unit of work rather
+than editing one.
+
+The boundary is written into `SessionDataSource.deleteSession`, into the fixture
+implementation, into the dialog copy the facilitator reads, and here — because a
+rule stated in one place gets "simplified" by whoever finds only that place.
 
 ## The empty default, and the example
 
@@ -1103,6 +1143,39 @@ small sizes only*, or accepting the swoosh reading in the header while the sheet
 Rhythm is varied deliberately: the rail is dense (`--s-3`/`--s-4`), the participant field is
 extremely sparse (`--s-16`/`--s-24`). The contrast in density is itself the signal that the two
 zones belong to different readers.
+
+### Highlight rules
+
+Three rules, applied everywhere without exception.
+
+**1. A highlight is a background tint plus a colour shift. No rim.** Hover never
+adds a border or an outline. A rim appearing under the cursor reads as the
+element having changed shape rather than as it having become active, and across
+twelve roster rows it flickers as the pointer travels. Zero hover rules in the
+product add a border or outline — verified by walking the CSSOM, not by reading.
+
+The one apparent exception is not one: `.btn--primary:hover` sets
+`border-color` to the same token as its own `background`, which keeps a filled
+button's border in sync with its fill. Nothing becomes visible.
+
+**2. `:focus-visible` keeps its ring.** The global 3px outline in `base.css` is
+an accessibility affordance, not decoration, and it was not removed along with
+the hover rim. Every interactive element pairs `:hover` and `:focus-visible` in
+one rule with identical declarations, so focus gets the same tint *plus* the
+ring — strictly more affordance than a pointer user, never less.
+
+**3. Every background highlight is rounded. No exceptions.** Hover, selection,
+active row, focus tint: all take a value from the radius scale. Square corners
+on a tint read as a bug in a product where nothing else has them.
+
+The awkward case was the selected row on 場次清單. A `background` on the row gave
+a square-cornered full-bleed strip, and it could not simply take a
+`border-radius`: the row is a `subgrid` whose tracks must line up with the
+parent's, so it cannot take padding to inset the fill, and rounding a strip that
+runs edge to edge is invisible anyway. The fill is therefore a pseudo-element
+behind the row, bled 12px outward so text is not flush against the curve and
+inset 2px vertically so two adjacent selections never merge into one shape.
+Grid geometry does not move.
 
 ### The radius scale
 

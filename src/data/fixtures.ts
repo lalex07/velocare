@@ -61,36 +61,43 @@ import {
 import type { SessionDataSource, TrialId, Unsubscribe } from './SessionDataSource'
 
 /* ── 據點 ─────────────────────────────────────────────────────────────────────
-   Configuration, not measurement. A 據點 list is what the appliance is
-   installed against; it asserts nothing about anyone having been measured, so
-   it is present on an empty install the way the year picker is.
+   NOT a hardcoded list. An appliance is installed at a real 據點 and staff name
+   it once, on the setup screen, so the site list starts empty like everything
+   else and grows by `createSite`.
+
+   This is also what keeps the uniqueness rule usable. There is exactly one 場次
+   per (據點, 年度, 期, 階段) — that rule is the misattribution guard and does not
+   get relaxed — but with a fixed two-item site list and a three-year picker,
+   a 據點 running its second concurrent 場次 collided immediately. The room to
+   have several open at once has to come from the INPUT side.
    ───────────────────────────────────────────────────────────────────────────── */
 
-const SITES: readonly Site[] = [
-  { siteId: 'SITE-01', name: '示範社區照顧關懷據點' },
-  { siteId: 'SITE-02', name: '示範第二關懷據點' },
-]
+const EXAMPLE_SITE_ID = 'EX-SITE'
 
 /* ── Persisted shape ───────────────────────────────────────────────────────── */
 
 const STORAGE_KEY = 'velocare.local.v1'
 
 interface PersistedState {
+  readonly sites: Site[]
   readonly blocks: Block[]
   readonly sessions: AssessmentSession[]
   readonly log: AnyRecord[]
   readonly enrolment: Record<SiteId, Participant[]>
   readonly recordSeq: number
   readonly enrolSeq: number
+  readonly siteSeq: number
 }
 
 const emptyState = (): PersistedState => ({
+  sites: [],
   blocks: [],
   sessions: [],
   log: [],
   enrolment: {},
   recordSeq: 0,
   enrolSeq: 0,
+  siteSeq: 0,
 })
 
 function readState(): PersistedState {
@@ -104,12 +111,14 @@ function readState(): PersistedState {
       return emptyState()
     }
     return {
+      sites: parsed.sites ?? [],
       blocks: parsed.blocks,
       sessions: parsed.sessions,
       log: parsed.log,
       enrolment: parsed.enrolment ?? {},
       recordSeq: parsed.recordSeq ?? 0,
       enrolSeq: parsed.enrolSeq ?? 0,
+      siteSeq: parsed.siteSeq ?? 0,
     }
   } catch {
     return emptyState()
@@ -268,7 +277,14 @@ export class FixtureDataSource implements SessionDataSource {
   }
 
   async getSites(): Promise<readonly Site[]> {
-    return SITES
+    return this.state.sites
+  }
+
+  async createSite(name: string): Promise<Site> {
+    const n = this.state.siteSeq + 1
+    const site: Site = { siteId: `SITE-${n.toString().padStart(2, '0')}`, name: name.trim() }
+    this.commit({ siteSeq: n, sites: [...this.state.sites, site] })
+    return site
   }
 
   async getEnrolment(siteId: SiteId): Promise<readonly Participant[]> {
@@ -315,10 +331,12 @@ export class FixtureDataSource implements SessionDataSource {
     const preDate = '2026-05-04'
     const postDate = '2026-07-27'
 
+    const exampleSite: Site = { siteId: EXAMPLE_SITE_ID, name: '示範社區照顧關懷據點' }
+
     const block: Block = {
       blockId: EXAMPLE_BLOCK_ID,
-      siteId: 'SITE-01',
-      siteName: SITES[0]!.name,
+      siteId: exampleSite.siteId,
+      siteName: exampleSite.name,
       blockName: '115 年度第 3 期',
       year: 115,
       cycle: 3,
@@ -427,6 +445,9 @@ export class FixtureDataSource implements SessionDataSource {
     })
 
     this.commit({
+      sites: this.state.sites.some((x) => x.siteId === exampleSite.siteId)
+        ? this.state.sites
+        : [...this.state.sites, exampleSite],
       blocks: [...this.state.blocks, block],
       sessions: [...this.state.sessions, pre, post],
       log: [...this.state.log, ...log],
@@ -449,7 +470,8 @@ export class FixtureDataSource implements SessionDataSource {
    * has to remember not to seed.
    */
   async openSession(setup: SessionSetup): Promise<AssessmentSession> {
-    const site = SITES.find((s) => s.siteId === setup.siteId) ?? SITES[0]!
+    const site = this.state.sites.find((s) => s.siteId === setup.siteId)
+    if (!site) throw new Error(`unknown site ${setup.siteId}`)
     const roster = this.state.enrolment[site.siteId] ?? []
     const attendees = roster.filter((p) => setup.attendeeIds.includes(p.id))
 
@@ -505,6 +527,36 @@ export class FixtureDataSource implements SessionDataSource {
 
   async completeSession(sessionId: SessionId): Promise<AssessmentSession> {
     return this.setStatus(sessionId, 'completed')
+  }
+
+  /**
+   * Delete a whole 場次 and every record in it.
+   *
+   * THE DELETION BOUNDARY — see the interface for why it must not be widened.
+   * There is no `deleteRecord` here and there must never be one: a record, once
+   * written, is never altered. A miscount is fixed by APPENDING a correction
+   * that points at the original, and both survive forever. The moment an
+   * individual record becomes deletable, "correct it" and "delete the
+   * inconvenient one" become the same gesture and nothing on the printed sheet
+   * can be defended afterwards.
+   *
+   * A 期 left with no 場次 goes too — an empty 期 is not a thing anyone can act
+   * on, and leaving it would make the uniqueness rule collide against a shell.
+   */
+  async deleteSession(sessionId: SessionId): Promise<void> {
+    const target = this.state.sessions.find((s) => s.sessionId === sessionId)
+    if (!target) return
+    if (this.live?.sessionId === sessionId) this.clearLive()
+
+    const sessions = this.state.sessions.filter((s) => s.sessionId !== sessionId)
+    const orphaned = !sessions.some((s) => s.blockId === target.blockId)
+    this.commit({
+      sessions,
+      log: this.state.log.filter((r) => r.sessionId !== sessionId),
+      blocks: orphaned
+        ? this.state.blocks.filter((b) => b.blockId !== target.blockId)
+        : this.state.blocks,
+    })
   }
 
   async reopenSession(sessionId: SessionId): Promise<AssessmentSession> {

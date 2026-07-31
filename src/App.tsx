@@ -37,6 +37,7 @@ import { Trial } from './surfaces/Trial'
 import { CorrectionDialog } from './surfaces/dialogs/CorrectionDialog'
 import { SessionStatusDialog } from './surfaces/dialogs/SessionStatusDialog'
 import { ClearDataDialog } from './surfaces/dialogs/ClearDataDialog'
+import { DeleteSessionDialog } from './surfaces/dialogs/DeleteSessionDialog'
 
 /**
  * The surfaces nest, and the header renders that nesting as a path:
@@ -92,6 +93,9 @@ export function App() {
      exactly the case where one matters most. Resolved at render instead. */
   const [announcing, setAnnouncing] = useState<SessionId | null>(null)
   const [clearing, setClearing] = useState(false)
+  const [deleting, setDeleting] = useState<{ id: SessionId; name: string; records: number } | null>(
+    null,
+  )
   const [hasExample, setHasExample] = useState(false)
 
   const { blocks, sessions, allResolved, loaded } = useSessions()
@@ -242,6 +246,20 @@ export function App() {
     setHasExample(false)
   }
 
+  /* Whole 場次 only. There is no per-record delete in this product — see the
+     boundary note on SessionDataSource.deleteSession. */
+  async function deleteSession() {
+    const target = deleting
+    setDeleting(null)
+    if (!target) return
+    if (target.id === activeSessionId) {
+      setActiveSessionId(null)
+      setView({ kind: 'sessions' })
+    }
+    await src.deleteSession(target.id)
+    setHasExample(await src.hasExampleData())
+  }
+
   async function beginSession(setup: SessionSetup) {
     const opened = await src.openSession(setup)
     activate(opened, { kind: 'roster' })
@@ -356,8 +374,23 @@ export function App() {
           onOpen={(s) => activate(s, { kind: 'roster' })}
           onNew={() => setView({ kind: 'setup' })}
           onLoadExample={() => void loadExample()}
-          onClearData={() => setClearing(true)}
+          onDelete={(s, name, records) => setDeleting({ id: s.sessionId, name, records })}
         />
+        <DeleteSessionDialog
+          open={deleting !== null}
+          sessionName={deleting?.name ?? ''}
+          recordCount={deleting?.records ?? 0}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => void deleteSession()}
+        />
+      </>,
+    )
+  }
+
+  if (view.kind === 'setup')
+    return shell(
+      <>
+        <Setup onBegin={(s) => void beginSession(s)} onReset={() => setClearing(true)} />
         <ClearDataDialog
           open={clearing}
           onCancel={() => setClearing(false)}
@@ -365,9 +398,6 @@ export function App() {
         />
       </>,
     )
-  }
-
-  if (view.kind === 'setup') return shell(<Setup onBegin={(s) => void beginSession(s)} />)
 
   if (!active || !block) return shell(<div className="field" />)
 

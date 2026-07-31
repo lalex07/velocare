@@ -124,6 +124,14 @@ export interface Strings {
     readonly firstRunBody: string
     readonly firstRunExample: string
 
+    /* Deleting a whole 場次. Never an individual record — see the deletion
+       boundary in SessionDataSource.ts. */
+    readonly deleteAction: string
+    readonly deleteFor: (what: string) => string
+    readonly deleteTitle: string
+    readonly deleteBody: (what: string, records: number) => string
+    readonly deleteConfirm: string
+
     readonly endAction: string
     readonly endTitle: string
     readonly endBody: string
@@ -166,6 +174,21 @@ export interface Strings {
     readonly attendeesHint: string
     /** Shown when the 據點 has nobody enrolled yet — the first-run path. */
     readonly noEnrolment: string
+    /* 據點 creation. The appliance is installed somewhere real and staff name
+       it; the list is not handed down from anywhere. */
+    readonly noSites: string
+    readonly addSiteTitle: string
+    readonly addSiteLabel: string
+    readonly addSiteHint: string
+    readonly addSiteAction: string
+    readonly addSitePlaceholder: string
+    readonly siteAdded: (name: string) => string
+    readonly yearHint: string
+    /* Reset. Whole-場次 or everything — never an individual record. */
+    readonly resetTitle: string
+    readonly resetAction: string
+    readonly resetBody: string
+    readonly resetConfirm: string
     readonly selectAll: string
     readonly selectNone: string
     readonly enrolledCount: (n: number) => string
@@ -506,6 +529,14 @@ const zhTW: Strings = {
       '本畫面列出這台機器上的所有場次。每個場次對應一個據點、一個期別與一個階段（前測或後測），量測紀錄都會記在所選定的場次之下。目前尚無任何場次與紀錄。',
     firstRunExample: '若只是想先看看操作流程，可載入一組範例資料。',
 
+    deleteAction: '刪除',
+    deleteFor: (what) => `刪除場次：${what}`,
+    deleteTitle: '刪除本場次',
+    // Names what goes, and states the boundary: whole 場次 only.
+    deleteBody: (what, records) =>
+      `將刪除「${what}」與其中的 ${records} 筆紀錄。此操作無法復原。其他場次不受影響。個別的量測紀錄無法單獨刪除——更正一律另存一筆，原紀錄永久保留。`,
+    deleteConfirm: '確認刪除本場次',
+
     endAction: '結束本場',
     endTitle: '結束本場',
     // States the consequence and the reversal in the same breath: a facilitator
@@ -533,8 +564,10 @@ const zhTW: Strings = {
     refuseGoto: '回場次清單',
     readOnlyNote: '本場已結束，僅供查看。若要繼續記錄，請先重新開啟本場。',
 
-    willResume: (what) => `此組合已有場次，將接續原場次：${what}`,
-    willReopen: (what) => `此場次已結束，開始後將重新開啟：${what}`,
+    willResume: (what) =>
+      `注意：此據點、期別與階段已有場次，按下按鈕將接續該場次，不會建立新的場次：${what}。若要同時進行另一個場次，請改用不同的據點、年度或期別。`,
+    willReopen: (what) =>
+      `注意：此據點、期別與階段已有一個已結束的場次，按下按鈕將重新開啟並接續該場次，不會建立新的場次：${what}`,
     willCreate: '此組合尚無場次，將建立新的場次。',
     beginResume: '接續本場',
     beginReopen: '重新開啟並開始',
@@ -552,6 +585,20 @@ const zhTW: Strings = {
     attendeesTitle: '本場出席名單',
     attendeesHint: '勾選今天到場的長輩。未到場者仍在收案名單內。',
     noEnrolment: '本據點尚無收案名單。請於下方新增長輩後，再勾選今天到場的人。',
+    noSites: '尚未建立任何據點。請先於下方新增本機所在的據點名稱。',
+    addSiteTitle: '新增據點',
+    addSiteLabel: '據點名稱',
+    addSiteHint: '本機所在的服務據點名稱，會顯示於畫面與報表上。',
+    addSiteAction: '新增據點',
+    addSitePlaceholder: '例如：中山區社區照顧關懷據點',
+    siteAdded: (name) => `已新增據點：${name}`,
+    // Says why the field is open rather than a picker.
+    yearHint: '民國年。可自由填寫，不限於預設年度。',
+    resetTitle: '重設所有資料',
+    resetAction: '重設所有資料',
+    resetBody:
+      '將移除本機所有據點、收案名單、場次與量測紀錄，包含示範資料與實際記錄的資料。此操作無法復原。個別的量測紀錄無法單獨刪除或修改——更正一律另存一筆，原紀錄永久保留。',
+    resetConfirm: '確認重設',
     selectAll: '全選',
     selectNone: '全部取消',
     enrolledCount: (n) => `收案 ${n} 人`,

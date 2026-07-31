@@ -58,6 +58,17 @@ export interface SessionDataSource {
 
   getSites(): Promise<readonly Site[]>
 
+  /**
+   * Create a 據點 and name it.
+   *
+   * The site list is not configuration handed down from anywhere — an appliance
+   * is installed at a real 據點 and staff name it once. It also matters for the
+   * uniqueness rule: there is exactly one 場次 per (據點, 年度, 期, 階段), so a
+   * store with one 據點 and one usable 年度 makes every second 場次 a collision.
+   * The fix is more room on the input side, never a weaker rule.
+   */
+  createSite(name: string): Promise<Site>
+
   /** Everyone enrolled at the site, across 期. The setup screen picks from this. */
   getEnrolment(siteId: SiteId): Promise<readonly Participant[]>
 
@@ -84,6 +95,29 @@ export interface SessionDataSource {
 
   /** End a session. No further trials, corrections or 無法進行 records. */
   completeSession(sessionId: SessionId): Promise<AssessmentSession>
+
+  /**
+   * Delete a whole 場次 and every record in it.
+   *
+   * ── THE DELETION BOUNDARY. DO NOT WIDEN IT. ────────────────────────────────
+   *
+   * Deletion operates on a WHOLE 場次, or on everything (`clearAllData`). There
+   * is deliberately no API for deleting or editing an individual trial record,
+   * and adding one would break the property that makes the log worth trusting:
+   * a record, once written, is never altered — a miscount is fixed by APPENDING
+   * a correction that points at the original, and both stay in the log forever.
+   *
+   * That is not a storage detail. PRODUCT.md principle 5: a facilitator who
+   * cannot fix the machine will either stop using it or start gaming it, and
+   * the reason correcting can feel ordinary is precisely that it never destroys
+   * anything. If individual records became deletable, "correct" and "delete the
+   * inconvenient one" would be the same gesture, and no number on the printed
+   * sheet could be defended afterwards.
+   *
+   * Throwing away a whole 場次 is a different act: it is visible, it is named in
+   * a confirmation, and it removes a unit of work rather than editing one.
+   */
+  deleteSession(sessionId: SessionId): Promise<void>
 
   /** Reopen a finished session so it can be recorded into again. */
   reopenSession(sessionId: SessionId): Promise<AssessmentSession>

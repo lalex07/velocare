@@ -38,7 +38,7 @@ export function SessionList({
   onOpen,
   onNew,
   onLoadExample,
-  onClearData,
+  onDelete,
 }: {
   blocks: readonly Block[]
   sessions: readonly AssessmentSession[]
@@ -48,7 +48,7 @@ export function SessionList({
   onOpen: (session: AssessmentSession) => void
   onNew: () => void
   onLoadExample: () => void
-  onClearData: () => void
+  onDelete: (session: AssessmentSession, name: string, records: number) => void
 }) {
   const ordered = listOrder(sessions)
   const open = ordered.filter((s) => s.status === 'open')
@@ -97,6 +97,18 @@ export function SessionList({
             onClick={() => onOpen(s)}
           >
             {s.status === 'open' ? strings.session.resume : strings.session.view}
+          </RailButton>
+        </span>
+        {/* Deleting a whole 場次. There is no per-record delete anywhere in this
+            product and there must not be — see the boundary note in
+            SessionDataSource.ts. */}
+        <span className="srow__delete">
+          <RailButton
+            variant="quiet"
+            ariaLabel={strings.session.deleteFor(label)}
+            onClick={() => onDelete(s, label, resolved.length)}
+          >
+            {strings.session.deleteAction}
           </RailButton>
         </span>
       </li>
@@ -156,18 +168,13 @@ export function SessionList({
         </div>
         <div className="rail__spacer" />
         <div className="rail__actions">
-          {/* Opt-in, reversible, and never both at once: the example either is
-              loaded or is not, and the control says which. */}
-          {hasExample ? (
-            <RailButton variant="quiet" onClick={onClearData}>
-              {strings.example.clear}
+          {/* Opt-in. Removing it is per-場次 deletion on the rows, or the full
+              reset on the setup screen — one concept each, rather than a third
+              example-only path. */}
+          {!hasExample && total > 0 && (
+            <RailButton variant="quiet" onClick={onLoadExample}>
+              {strings.example.load}
             </RailButton>
-          ) : (
-            total > 0 && (
-              <RailButton variant="quiet" onClick={onLoadExample}>
-                {strings.example.load}
-              </RailButton>
-            )
           )}
           <RailButton variant="primary" icon="roster" onClick={onNew}>
             {strings.session.newSession}

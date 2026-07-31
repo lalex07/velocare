@@ -53,10 +53,21 @@ import {
 } from '../domain/types'
 import { strings } from '../i18n/strings'
 
+/* 期 stays a fixed set: the funding rule is a maximum of three 期 per year per
+   特約服務點, so a free field here would invite an invalid value. 年度 does not —
+   民國 years keep going, and pinning the picker to three of them is what made
+   every second 場次 collide with the uniqueness rule. */
 const CYCLES = [1, 2, 3] as const
-const YEARS = [114, 115, 116] as const
+const ROC_OFFSET = 1911
+const thisRocYear = () => new Date().getFullYear() - ROC_OFFSET
 
-export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
+export function Setup({
+  onBegin,
+  onReset,
+}: {
+  onBegin: (setup: SessionSetup) => void
+  onReset: () => void
+}) {
   const src = useDataSource()
   const camera = useCameraPreview()
 
@@ -65,8 +76,10 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
   const [blocks, setBlocks] = useState<readonly Block[]>([])
   const [sessions, setSessions] = useState<readonly AssessmentSession[]>([])
   const [siteId, setSiteId] = useState<string>('')
-  const [year, setYear] = useState<number>(115)
-  const [cycle, setCycle] = useState<number>(3)
+  const [year, setYear] = useState<number>(thisRocYear)
+  const [cycle, setCycle] = useState<number>(1)
+  const [newSite, setNewSite] = useState('')
+  const [siteAdded, setSiteAdded] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>('post')
   const [attendees, setAttendees] = useState<ReadonlySet<ParticipantId>>(new Set())
   const [newLabel, setNewLabel] = useState('')
@@ -78,7 +91,7 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
       setSites(ss)
       setBlocks(bs)
       setSessions(sess)
-      setSiteId(ss[0]?.siteId ?? '')
+      setSiteId((prev) => prev || ss[0]?.siteId || '')
     })()
   }, [src])
 
@@ -150,6 +163,16 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
     })
   }
 
+  async function addSite() {
+    const name = newSite.trim()
+    if (!name) return
+    const site = await src.createSite(name)
+    setSites((prev) => [...prev, site])
+    setSiteId(site.siteId)
+    setNewSite('')
+    setSiteAdded(site.name)
+  }
+
   async function add() {
     const label = newLabel.trim()
     if (!label) return
@@ -178,35 +201,76 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
             <section className="card">
               <h3 className="card__title">{strings.setup.blockLabel}</h3>
 
-              <label className="fld">
-                <span className="fld__label">{strings.setup.siteLabel}</span>
-                <select
-                  className="fld__control"
-                  value={siteId}
-                  onChange={(e) => setSiteId(e.target.value)}
-                >
-                  {sites.map((s) => (
-                    <option key={s.siteId} value={s.siteId}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {sites.length > 0 && (
+                <label className="fld">
+                  <span className="fld__label">{strings.setup.siteLabel}</span>
+                  <select
+                    className="fld__control"
+                    value={siteId}
+                    onChange={(e) => setSiteId(e.target.value)}
+                  >
+                    {sites.map((s) => (
+                      <option key={s.siteId} value={s.siteId}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {sites.length === 0 && (
+                <p className="card__hint card__hint--note">{strings.setup.noSites}</p>
+              )}
+
+              {/* Creating a 據點 lives HERE rather than behind a settings screen.
+                  It is also what makes concurrent 場次 possible without touching
+                  the uniqueness rule: a 前測 at one 據點 and a 後測 at another are
+                  different keys, so both can be open. */}
+              <div className="addp">
+                <h4 className="addp__title">{strings.setup.addSiteTitle}</h4>
+                <label className="fld">
+                  <span className="fld__label">{strings.setup.addSiteLabel}</span>
+                  <input
+                    className="fld__control"
+                    type="text"
+                    value={newSite}
+                    placeholder={strings.setup.addSitePlaceholder}
+                    onChange={(e) => {
+                      setNewSite(e.target.value)
+                      setSiteAdded(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void addSite()
+                      }
+                    }}
+                  />
+                  <span className="fld__hint">{strings.setup.addSiteHint}</span>
+                </label>
+                <RailButton onClick={() => void addSite()} disabled={newSite.trim().length === 0}>
+                  {strings.setup.addSiteAction}
+                </RailButton>
+                {siteAdded && (
+                  <p className="addp__done" role="status">
+                    {strings.setup.siteAdded(siteAdded)}
+                  </p>
+                )}
+              </div>
 
               <div className="fld-row">
                 <label className="fld">
                   <span className="fld__label">{strings.setup.yearLabel}</span>
-                  <select
+                  <input
                     className="fld__control"
+                    type="number"
+                    inputMode="numeric"
+                    min={100}
+                    max={200}
                     value={year}
                     onChange={(e) => setYear(Number(e.target.value))}
-                  >
-                    {YEARS.map((y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
+                  />
+                  <span className="fld__hint">{strings.setup.yearHint}</span>
                 </label>
 
                 <label className="fld">
@@ -321,7 +385,11 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
                     className="fld__control"
                     type="text"
                     value={newLabel}
-                    maxLength={12}
+                    /* No maxLength. Invariant 2 is enforced by the SCHEMA having
+                       nowhere to put an identifier — `enrolParticipant(siteId,
+                       label)` takes no other parameter — not by the field being
+                       too short to type a name into. A cap only truncated
+                       legitimate 稱謂 while stopping nothing. */
                     placeholder={strings.setup.addPlaceholder}
                     onChange={(e) => {
                       setNewLabel(e.target.value)
@@ -362,10 +430,16 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
         <div className="rail__spacer" />
         <div className="rail__actions">
           <span className="rail__note">{strings.setup.enrolledCount(enrolled.length)}</span>
+          {/* Whole-machine reset. Whole-場次 deletion lives on the session list;
+              neither touches an individual record — see the deletion boundary in
+              SessionDataSource.ts. */}
+          <RailButton variant="quiet" onClick={onReset}>
+            {strings.setup.resetAction}
+          </RailButton>
           <RailButton
             variant="primary"
             icon="roster"
-            disabled={count === 0}
+            disabled={count === 0 || sites.length === 0}
             onClick={() =>
               onBegin({ siteId, year, cycle, phase, attendeeIds: [...attendees] })
             }

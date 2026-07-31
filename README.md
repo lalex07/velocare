@@ -337,6 +337,24 @@ Measured in a headless browser, not eyeballed.
   path data exists, so the tab icon cannot drift from the header mark — which is what happened when
   the favicon held its own copy. All four are cache-busted with `?v=3` and Vite rewrites them to
   `./` for the relative base.
+- **Two concurrent 場次, without touching the uniqueness rule.** 據點 are created and named on the
+  setup screen and 年度 is a free field, so a 前測 at one site and a 後測 at another are different
+  keys and both stay open. Verified end to end: two rows in 進行中的場次, switchable, each recording
+  into its own log (`{siteA-pre: 1, siteB-post: 1}` — never shared). When a key does collide the
+  setup screen still says so before the button is pressed, and the copy names the way out.
+- **Deletion is coarse by design.** A whole 場次 (its records, and its 期 if that was the last 場次;
+  the 據點 survives) or everything. **There is no per-record delete and there must never be one** —
+  see `DESIGN.md`. Verified: deleting one 場次 left the other's records untouched.
+- **No hover rim anywhere.** All 12 `:hover` rules walked through the CSSOM: **zero** add a border
+  or outline. `:focus-visible` keeps the global 3px ring on every interactive element, paired with
+  the same tint as hover, so focus is strictly more visible than hover.
+- **Every painted tint is rounded.** Measured across the live DOM: zero elements with a
+  non-transparent background and `border-radius: 0`. The selected session row needed a
+  pseudo-element rather than a `border-radius` — it is a subgrid and cannot take padding — and now
+  renders at `10px`, bled 12 px outward and inset 2 px vertically.
+- **No cap on 稱謂.** 23 characters typed, 23 stored, `maxlength` absent, hint unchanged. Invariant 2
+  is enforced by `enrolParticipant(siteId, label)` having nowhere to put an identifier, not by the
+  field being too short to type a name into.
 - **Reduced motion.** All four animations collapse to instant state swaps; content is never gated
   behind a transition.
 - **No horizontal overflow** at 1280×800 or 1600×900.

@@ -76,6 +76,30 @@
   font-weight: 700;
 }
 
+/* Which 場次 this sheet covers, and which one it was produced from.
+
+   Its own row rather than two more items in the meta line: with several 場次
+   open on one device this is what a 據點負責人 checks the sheet against their
+   paper register with, so it has to be findable rather than fifth in a wrapping
+   row. Separated by a hairline, not boxed.
+
+   CAPACITY IS MEASURED BY RENDERING THE REAL SHEET TO A4 AND COUNTING PAGES,
+   not estimated from a content height — the estimate was out by two rows in
+   both directions. Boxed, this line cost the sheet two rows of one-page
+   capacity; hairline-separated it costs exactly one, taking a sheet that fit
+   fourteen participants down to thirteen. The minimum funded class is ten.
+   Trimming the margin and dropping the rule saves 2 mm and does NOT buy the row
+   back — measured — so the rule stays. Re-measure after any change here. */
+.sheet__coverage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1mm 7mm;
+  margin-top: 2.5mm;
+  padding-top: 2mm;
+  border-top: 0.4pt solid #999;
+  font-size: 9.5pt;
+}
+
 /* ── Table ───────────────────────────────────────────────────────────────── */
 
 .sheet__table {

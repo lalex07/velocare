@@ -39,7 +39,8 @@ export interface SessionDataSource {
   /** Whether this source is backed by a real camera. Drives the demo banner. */
   readonly isSimulated: boolean
 
-  getBlock(): Promise<Block>
+  /** Every 期 known to the store. Plural since several 場次 run concurrently. */
+  getBlocks(): Promise<readonly Block[]>
   getSessions(): Promise<readonly AssessmentSession[]>
   getRecords(sessionId: SessionId): Promise<readonly AnyRecord[]>
 
@@ -63,8 +64,29 @@ export interface SessionDataSource {
   /** Enrol someone new. The STORE assigns the id; staff supply only a label. */
   enrolParticipant(siteId: SiteId, label: string): Promise<Participant>
 
-  /** Open (or re-open) the session the setup screen configured. */
+  /* ── Session lifecycle ─────────────────────────────────────────────────────
+     A 場次 is a first-class entity with a status. Several are open at once, so
+     "which one am I recording into" has a wrong answer and the store is the
+     thing that has to know. Ending and reopening are SEPARATE, EXPLICIT calls
+     rather than a status field a caller could set in passing.
+     ─────────────────────────────────────────────────────────────────────────── */
+
+  /**
+   * Open the session the setup screen configured, or resume the existing one
+   * for that (據點, 年度, 期, 階段). Never creates a second session for a
+   * combination that already has one: two 後測 sessions in the same 期 would be
+   * exactly the ambiguity this whole feature exists to remove.
+   *
+   * Always returns an OPEN session, reopening a completed one if that is what
+   * the caller asked for.
+   */
   openSession(setup: SessionSetup): Promise<AssessmentSession>
+
+  /** End a session. No further trials, corrections or 無法進行 records. */
+  completeSession(sessionId: SessionId): Promise<AssessmentSession>
+
+  /** Reopen a finished session so it can be recorded into again. */
+  reopenSession(sessionId: SessionId): Promise<AssessmentSession>
 
   /** Current tracking state, for the rail indicator between trials. */
   getTrackingState(): TrackingState
@@ -77,6 +99,11 @@ export interface SessionDataSource {
    * Cue-to-movement reaction time in older adults is 0.3-1.0 s, which is larger
    * than the entire October error budget and systematic rather than random, so a
    * movement-triggered clock could not be compared to a human stopwatch.
+   *
+   * REJECTS if `sessionId` is unknown, is not open, or does not list
+   * `participantId` as an attendee. The UI refuses first and says why — see
+   * `trialGate` — but the refusal lives here too, so a future caller cannot
+   * write into a finished 場次 by forgetting to ask.
    */
   startTrial(sessionId: SessionId, participantId: ParticipantId): Promise<TrialId>
 
@@ -92,10 +119,12 @@ export interface SessionDataSource {
   /** Discard the trial with a reason. Appends an `aborted` record. */
   abortTrial(trialId: TrialId, reason: AbortReason): Promise<Outcome>
 
-  /** Record that the protocol cannot be performed at all. Still enrolled. */
+  /** Record that the protocol cannot be performed at all. Still enrolled.
+      Rejects on a closed session, on the same grounds as `startTrial`. */
   markUnable(sessionId: SessionId, participantId: ParticipantId): Promise<Outcome>
 
-  /** Append a correction. Never mutates the record it corrects. */
+  /** Append a correction. Never mutates the record it corrects.
+      Rejects on a closed session: correcting is writing. */
   appendCorrection(input: {
     sessionId: SessionId
     participantId: ParticipantId

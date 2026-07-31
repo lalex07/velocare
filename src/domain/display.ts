@@ -16,7 +16,7 @@
 import type { ShapeKind } from '../components/Shape'
 import type { CameraSignal } from '../hooks/useCameraPreview'
 import { strings } from '../i18n/strings'
-import type { Outcome, TrackingState } from './types'
+import type { Outcome, SessionStatus, TrackingState } from './types'
 
 /**
  * `neutral` means no colour at all.
@@ -84,6 +84,22 @@ export function outcomeDisplay(o: Outcome): Display {
     case 'void':
       return { word: strings.status.voided, shape: 'square-filled', tone: 'alert' }
   }
+}
+
+/**
+ * 場次 status — 進行中 / 已結束.
+ *
+ * BOTH ARE `neutral`, deliberately. The two machine tones describe the machine
+ * and the five `st-` tones describe a person's outcome; a session is neither,
+ * and borrowing one of them would say something false — an open session is not
+ * "live tracking" and a finished one is not "discarded". Scanning the session
+ * list is done by GROUPING (進行中 above 已結束) rather than by hue, and the
+ * word plus the bracket shape carry the state on their own.
+ */
+export function sessionStatusDisplay(s: SessionStatus): Display {
+  return s === 'open'
+    ? { word: strings.session.statusOpen, shape: 'span-open', tone: 'neutral' }
+    : { word: strings.session.statusCompleted, shape: 'span-closed', tone: 'neutral' }
 }
 
 export const awaitingDisplay: Display = {

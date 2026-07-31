@@ -22,12 +22,14 @@ import { CameraControls } from '../components/CameraControls'
 import { CameraSelfView } from '../components/CameraSelfView'
 import { Digits } from '../components/Digits'
 import { RailButton } from '../components/RailButton'
+import { Refusal } from '../components/Refusal'
 import { RepPips } from '../components/RepPips'
 import { StateChip } from '../components/StateChip'
 import { useDataSource } from '../data/context'
 import type { TrialId } from '../data/SessionDataSource'
 import { cameraSignalDisplay, outcomeDisplay, trackingDisplay } from '../domain/display'
 import { useCameraPreview } from '../hooks/useCameraPreview'
+import type { TrialGate } from '../domain/sessions'
 import {
   PRESCRIBED_REPS,
   type AbortReason,
@@ -46,13 +48,19 @@ type Stage = 'cue' | 'running' | 'void' | 'settled'
 export function Trial({
   participant,
   session,
+  gate,
   onSettled,
   onBack,
+  onSessions,
 }: {
   participant: Participant
   session: AssessmentSession
+  /** Whether this 場次 will accept a trial for this person. See domain/sessions.ts. */
+  gate: TrialGate
   onSettled: (outcome: Outcome) => void
   onBack: () => void
+  /** Out to the session list — the one route that resolves every refusal. */
+  onSessions: () => void
 }) {
   const src = useDataSource()
   const tracking = useTracking()
@@ -81,6 +89,11 @@ export function Trial({
   }, [participant.id])
 
   async function begin() {
+    // Re-checked at the press, not only at render. The session could have been
+    // ended in another tab, or the gate could have flipped while this surface
+    // sat open on the cue — and "recorded into a guess" is the one outcome this
+    // product will not produce.
+    if (!gate.ok) return
     armAudio() // the staff press is the gesture the browser requires
     const id = await src.startTrial(session.sessionId, participant.id)
     trialIdRef.current = id
@@ -140,6 +153,7 @@ export function Trial({
 
   async function doUnable() {
     setAskUnable(false)
+    if (!gate.ok) return
     await src.markUnable(session.sessionId, participant.id)
     onBack()
   }
@@ -154,6 +168,12 @@ export function Trial({
 
   const trackChip = trackingDisplay(stage === 'void' ? 'lost' : tracking)
   const cameraLive = camera.status === 'live'
+
+  /* The refusal replaces the cue rather than sitting beside it. A screen that
+     said 請準備 and then declined to start would be the worst of both. Once a
+     trial is running the gate cannot have been closed when it began, so only the
+     cue stage is guarded. */
+  const blocked = !gate.ok && stage === 'cue'
 
   return (
     <div className="zones">
@@ -180,7 +200,19 @@ export function Trial({
         )}
 
         <div className="field__stage">
-          {stage === 'cue' && (
+          {blocked && !gate.ok && (
+            <Refusal
+              title={strings.session.refuseTitle}
+              body={strings.session.refuse[gate.reason]}
+              actions={
+                <RailButton variant="primary" icon="roster" onClick={onSessions}>
+                  {strings.session.refuseGoto}
+                </RailButton>
+              }
+            />
+          )}
+
+          {stage === 'cue' && !blocked && (
             <div className="cue">
               <p className="cue__title">{strings.trial.cue}</p>
               <p className="cue__hint">{strings.trial.cueHint}</p>
@@ -229,7 +261,7 @@ export function Trial({
           participant field. A Tier 1 trial cannot pause and tracking loss voids
           it, so the moment before the start press is the only cheap chance to
           fix a bad camera position, and the only moment these controls matter. */}
-      {stage === 'cue' && (
+      {stage === 'cue' && !blocked && (
         <CameraControls
           status={camera.status}
           onStart={() => void camera.start()}
@@ -275,7 +307,9 @@ export function Trial({
         <div className="rail__actions">
           {/* No 回名單 here: the header carries back on every surface, and two
               controls to one destination is one too many. */}
-          {stage === 'cue' && (
+          {/* No 開始 control at all when the gate is closed. A disabled primary
+              is still the thing a hurried thumb aims at. */}
+          {stage === 'cue' && !blocked && (
             <>
               <RailButton variant="quiet" onClick={() => setAskUnable(true)}>
                 {strings.unable.action}

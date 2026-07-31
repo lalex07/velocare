@@ -183,13 +183,18 @@ export function ParticipantDetail({
   participant,
   sessions,
   allResolved,
+  writable,
   onCorrect,
   onRemeasure,
   onDone,
 }: {
   participant: Participant
+  /** The 場次 of THIS 期 only — 前測 and 後測. Never every session on the device:
+      the 期 has exactly two assessment points and that is what this shows. */
   sessions: readonly AssessmentSession[]
   allResolved: ReadonlyMap<SessionId, readonly ResolvedTrial[]>
+  /** Whether the active 場次 still accepts writes. Correcting is writing. */
+  writable: boolean
   onCorrect: () => void
   onRemeasure: () => void
   onDone: () => void
@@ -283,12 +288,22 @@ export function ParticipantDetail({
         </div>
         <div className="rail__spacer" />
         <div className="rail__actions">
-          <RailButton variant="quiet" onClick={onCorrect}>
-            {strings.result.correct}
-          </RailButton>
-          <RailButton icon="start" onClick={onRemeasure}>
-            {strings.result.redo}
-          </RailButton>
+          {/* Correcting and re-measuring both APPEND to the log, so both are
+              gone once the 場次 is finished. Stated, not merely absent — the
+              note says the session can be reopened, which is what stops a
+              facilitator concluding the machine has lost the ability. */}
+          {writable ? (
+            <>
+              <RailButton variant="quiet" onClick={onCorrect}>
+                {strings.result.correct}
+              </RailButton>
+              <RailButton icon="start" onClick={onRemeasure}>
+                {strings.result.redo}
+              </RailButton>
+            </>
+          ) : (
+            <span className="rail__note">{strings.session.readOnlyNote}</span>
+          )}
           <RailButton variant="primary" icon="roster" onClick={onDone}>
             {strings.result.accept}
           </RailButton>

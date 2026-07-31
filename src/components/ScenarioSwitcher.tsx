@@ -8,9 +8,20 @@
 
 import { strings } from '../i18n/strings'
 import type { TrialScript } from '../data/fixtures'
+import type { SessionId, SessionStatus } from '../domain/types'
+
+export interface ScenarioSessionOption {
+  readonly sessionId: SessionId
+  readonly label: string
+  readonly status: SessionStatus
+}
 
 export interface ScenarioActions {
-  gotoRoster: (phase: 'pre' | 'post') => void
+  gotoSessions: () => void
+  /** Jumps straight into a named 場次. Named, not "the pre one": with several
+      open, a demo shortcut that picked by phase would pick the wrong one. */
+  gotoSession: (id: SessionId) => void
+  openSessions: readonly ScenarioSessionOption[]
   gotoSheet: () => void
   runTrial: (script: TrialScript) => void
   showResult: (kind: 'complete' | 'incomplete' | 'hand_contact' | 'unable' | 'aborted') => void
@@ -60,15 +71,26 @@ export function ScenarioSwitcher({
       </div>
       <p className="scn__hint">{strings.scenario.hint}</p>
 
+      {/* Every seeded 場次 by name. Switching from here still goes through the
+          app's one `activate` path, so the context band announces it exactly as
+          it would if the row had been tapped on the session list. */}
       <div className="scn__group">
-        <p className="scn__group-title">{strings.scenario.groupSurfaces}</p>
+        <p className="scn__group-title">{strings.scenario.groupSessions}</p>
         <div className="scn__items">
-          <button className="scn__btn" onClick={() => actions.gotoRoster('post')}>
-            {strings.scenario.rosterFor(strings.phase.post)}
+          <button className="scn__btn" onClick={actions.gotoSessions}>
+            {strings.scenario.sessionList}
           </button>
-          <button className="scn__btn" onClick={() => actions.gotoRoster('pre')}>
-            {strings.scenario.rosterFor(strings.phase.pre)}
-          </button>
+          {actions.openSessions.map((s) => (
+            <button
+              key={s.sessionId}
+              className="scn__btn"
+              onClick={() => actions.gotoSession(s.sessionId)}
+            >
+              {s.label}
+              {'　'}
+              {s.status === 'open' ? strings.session.statusOpen : strings.session.statusCompleted}
+            </button>
+          ))}
         </div>
       </div>
 

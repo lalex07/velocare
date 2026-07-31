@@ -29,12 +29,14 @@ Node 22+. Built and verified on Node 26 / npm 11.
 
 ## What you are looking at
 
-Four surfaces plus a print artifact, under a header that renders **the path to where you are**:
+Several 場次 can be open on one device at once, so the root surface is a **session list** and
+nothing is selected for you. Under it, a header renders **the path to where you are**:
 
 ```
-場次設定 ──► 本期名單 ──┬──► 王阿姨・量測 ──► 王阿姨・本次量測 ──► 王阿姨・紀錄
-                       ├──► 王阿姨・紀錄
-                       └──► 報表
+場次清單 ──┬──► 新增場次
+           └──► 本期名單 ──┬──► 王阿姨・量測 ──► 王阿姨・本次量測 ──► 王阿姨・紀錄
+                          ├──► 王阿姨・紀錄
+                          └──► 報表
 ```
 
 Every segment of that path is a 64px button. Home is always the first segment; back is always the
@@ -47,18 +49,58 @@ printed sheet stays strictly black on white.
 
 | Surface | What it is |
 |---|---|
-| **Setup** | 據點, 期, phase, today's attendance, camera framing check. Where a session is configured. |
-| **Roster** | A 期 in progress, marked 前測 or 後測. Status per participant. Deliberately carries **no times**. |
+| **Sessions** | Every 場次, open and completed, grouped by status. The only place the active session changes. |
+| **Setup** | 據點, 期, phase, today's attendance, camera framing check. Where a 場次 is configured. |
+| **Roster** | The active 場次's attendance list. Status per participant. Deliberately carries **no times**. |
 | **Trial** | The 5×STS itself. Mirrored self-view on the left half, one number and five pips on the right. |
 | **Result** | Straight after a trial: the time, any flag, and the next participant's name. Deliberately carries **no attempt history** — the participant is still sitting in front of the screen. |
 | **Detail** | One participant, both phases, per-rep splits, 差值, and the full append-only attempt history. |
 | **Sheet** | A4, one page, printable. **This is the product.** |
 
+### Several 場次 at once, and the one failure that creates
+
+A 據點 runs a 後測 for one 期 in the morning and a 前測 for another in the afternoon, and the
+machine does not get put away in between. With one implicit session it was impossible to record a
+trial into the wrong place. With several it is not — and the failure is silent: a trial recorded
+against the wrong 期 or the wrong 階段 surfaces weeks later as a wrong number in a 成果報告, with
+nothing on the sheet to reveal it. Nobody would ever find it.
+
+Four things address that, and none of them is a warning dialog:
+
+- **Nothing is active until someone picks.** No most-recent-session heuristic. An app that guessed
+  right most of the time would be worse than one that is obviously silent, because the once it
+  guessed wrong would be unfindable.
+- **The active 據點 / 期別 / 階段 is on every surface that can record**, as a band under the header
+  at facilitator reading size — roster, trial, result, participant record and sheet. It replaced
+  the header's read-only phase chip, which was adequate when pre-versus-post was the only
+  ambiguity and is not now. 階段 carries the extra weight: 前測 and 後測 are the pair that gets
+  confused.
+- **The device refuses rather than guessing.** A trial cannot start unless the session is present,
+  resolvable to a 期, still open, and actually listing the person about to be measured. Refusals
+  are stated in a sentence with the route out, never a greyed-out button. The guard also lives at
+  the data-source seam, so a future caller cannot write into a finished 場次 by forgetting to ask.
+- **Switching is deliberate and visible.** It happens in exactly one place — a row on the session
+  list — never as a side effect of navigating, and the band announces it in a `role="status"` line
+  for eight seconds afterwards.
+
+Ending a 場次 stops it accepting trials, corrections and 無法進行 records; the data stays and stays
+printable. Reopening is one confirmed act away, and the copy says so — a facilitator who believes
+an action cannot be undone will avoid using it, and unended sessions are how 場次 stop being
+distinguishable at all. There is **exactly one 場次 per (據點, 年度, 期, 階段)**: configuring a
+combination that already exists resumes it rather than forking it, and the setup screen says which
+before the button is pressed.
+
+The sheet says which 期 and which 場次 it covers, **on paper** — both 階段 with their dates and
+attendance, and which 場次 it was produced from. Two sheets from the same morning can otherwise
+carry different 期 and look identical.
+
 ### Press `S` for the scenario switcher
 
 The deployed demo keeps it reachable on purpose, so anyone can walk every state without a camera:
-each trial script (typical, slow, three-reps-only, hand contact, tracking loss and restart), each
-recorded outcome, and the sheet with mixed results. It never prints.
+every seeded 場次 by name, each trial script (typical, slow, three-reps-only, hand contact,
+tracking loss and restart), each recorded outcome, and the sheet with mixed results. Switching
+sessions from the panel goes through the same one code path a tapped row does, so the context band
+announces it identically. It never prints.
 
 ## The seam — where October plugs in
 
@@ -91,16 +133,27 @@ network dependency.
 
 - **Everything numeric.** Rep detection, timings, seat height, tracking state. All scripted in
   `src/data/fixtures.ts`.
-- **The 期.** A fictional 據點, 12 pseudonymous participants (`P-0041`…`P-0052`) with staff-style
-  display labels. No real person is represented; there are no identity fields anywhere in the
-  type system, by invariant.
-- **The record log.** Pre-populated append-only, deliberately mid-flight: 前測 complete for all 12,
-  後測 partway through with one of every edge case already recorded, including a tracking-loss void
-  followed by a successful restart and a correction stacked on a completed trial.
+- **Two 據點, three 期, five 場次.** Fictional throughout, with pseudonymous participants
+  (`P-0041`…`P-0055` and `P-0061`…`P-0072`) carrying staff-style display labels. No real person is
+  represented; there are no identity fields anywhere in the type system, by invariant.
+
+  | 期 | 場次 | | |
+  |---|---|---|---|
+  | 115 年度第 3 期 · 示範社區照顧關懷據點 | 前測 115/05/04 | 已結束 | 12 人, all assessed |
+  | | 後測 115/07/27 | **進行中** | 12 人, 7 assessed |
+  | 115 年度第 1 期 · 示範第二關懷據點 | 前測 115/07/30 | **進行中** | 10 人, 5 assessed |
+  | 114 年度第 3 期 · 示範社區照顧關懷據點 | 前測 114/10/06 | 已結束 | 10 人, all assessed |
+  | | 後測 114/12/29 | 已結束 | 9 人 — one absent, so the sheet reads 未記錄 |
+
+  Two are open, mid-progress, at different 據點 and different 階段: the exact configuration in
+  which a trial could be recorded into the wrong place.
+- **The record log.** Pre-populated append-only. The open 後測 carries one of every edge case,
+  including a tracking-loss void followed by a successful restart and a correction stacked on a
+  completed trial.
 
 ## What is real
 
-- The three surfaces, all interaction, and every state transition.
+- Every surface, all interaction, and every state transition — including the session lifecycle.
 - **The print sheet**, including its regulatory footer.
 - The append-only record model with corrections-as-records (`src/domain/records.ts`).
 - All five edge cases as first-class recorded outcomes, not error handling.
@@ -148,30 +201,45 @@ which the first does not. Verified: all ten digits measure 113.27 px at the hero
 
 Measured in a headless browser, not eyeballed.
 
-- **All seven screens audited**, not just the roster: 559 text nodes across setup, roster, detail,
-  trial cue, trial running, result and the sheet. Zero below 4.5:1, minimum 5.28:1. Zero controls under
-  64 px once `<input>`s are resolved to their wrapping `<label>`, which is the actual tap target.
-  One `<h1>` per surface, no duplicates.
+- **All nine screens audited**, not just the roster: 747 text nodes across the session list, setup,
+  roster, detail, trial cue, trial running, trial settled, result and the sheet — plus the
+  read-only roster of a finished 場次. Zero below 4.5:1, minimum 5.28:1. Zero controls under 64 px
+  once `<input>`s are resolved to their wrapping `<label>`, which is the actual tap target. One
+  `<h1>` per surface, no duplicates.
+  The audit script itself had a bug worth recording: it painted black under each swatch before
+  reading it back, which made every transparent background resolve as opaque black and reported
+  dark ink on cream at **1.31:1**. Numbers that absurd are a broken instrument, not a broken
+  palette. Do not pre-fill the canvas.
 - **Roster columns actually align.** Measured: one distinct x per track per half for both the
   status and action columns, and the two halves match each other to within 0.6 px at 1280×800 and
   1600×900 — including the row carrying an extra 已更正 modifier, which sits on the same geometry
   as every other row because the modifier cell is always rendered.
-- **One band of chrome.** Header 72 px, content starts at 73 px. It was 80 px of header plus a
-  42 px demo strip.
-- **Roster fits the class.** All **12 of 12 rows fully visible at 1280×800 with no scrolling**
-  (neither the field nor the page scrolls), and 12 of 12 at 1600×900. Two columns: twelve rows at
-  the 64 px tap floor is 768 px of rows alone, which does not fit under an 800 px viewport at any
-  type size, so the tap target rather than the typography is the binding constraint.
+- **Two bands of chrome, and the second one is the trade.** Header 72 px, session context band
+  56 px, content starts at 129 px. The band replaced the header's read-only phase chip rather than
+  being added to it. It costs the participant field 56 px on a surface whose largest element is
+  192 px, and it buys knowing which 期 a number lands in — see the multi-session section above.
+  Both the header and the band are `no-print`; **zero app chrome reaches paper**, verified.
+- **Roster still fits the class, with the band in place.** All **12 of 12 rows fully visible at
+  1280×800 with no scrolling** (neither the field nor the page scrolls), and 12 of 12 at 1440×900
+  and 1600×900. Two columns: twelve rows at the 64 px tap floor is 768 px of rows alone, which does
+  not fit under an 800 px viewport at any type size, so the tap target rather than the typography is
+  the binding constraint. The 據點/期別 line came off the roster's own metadata row when the band
+  took it over, which is where the band's 56 px partly came back from.
 - **Contrast.** Full-page audit resolves every colour through a canvas (`getComputedStyle` returns
   `oklch()` verbatim, so string parsing silently reports 1.00:1). **Zero below 4.5:1**,
   minimum 5.28:1. Every text node in the locked participant field measures **≥8.19:1**
   against a 7:1 floor. Token matrix is in `DESIGN.md`; all values there are measured, and three
   hand-computed sets have now been wrong — including the first draft of this cream palette, whose
   estimates would have shipped `--ink-muted` at 3.80:1.
-- **Print.** The sheet is **889 px of content against 1017 px of A4 printable height** (297 mm less
-  28 mm of `@page` margin) — 33.8 mm of headroom, one page. Emitting a PDF returns a single page.
+- **Print.** One A4 page, **measured by rendering the real sheet to PDF and counting pages** —
+  `MediaBox [0 0 594.96 841.92]`, `/Count 1`. Capacity is measured the same way, by duplicating
+  rows until it breaks: **13 participants on one page, 14 spills.** The content-height estimate
+  this used to rely on was out by two rows in both directions, and it is what let a first draft of
+  the coverage block ship as "5.7 mm of headroom" when it had actually cost two rows.
   Note the app shell needs its `height:100%` / `overflow:hidden` flattened in `@media print`, or a
-  sheet that fits paginates to two pages anyway.
+  sheet that fits paginates to two pages anyway — and the session band needs `no-print`, which it
+  did not have at first: app chrome on a sheet handed to a 據點負責人 is a bug, and it also pushed
+  the twelve-row sheet to two pages.
 - **Print stays black on white.** The screen's cream ground does not leak onto paper: under print
   emulation the sheet background measures pure `255,255,255` and **all 104 text nodes measure
   chroma 0 on both foreground and background**. Verified, not assumed.
@@ -195,8 +263,10 @@ Measured in a headless browser, not eyeballed.
 
 ### Known limits
 
-- The sheet fits **up to about 16 participants** on one page. Beyond that it needs a second page or
-  a smaller row rhythm; the minimum funded class size is 10.
+- The sheet fits **13 participants** on one page — measured, not estimated. It was 14 before the
+  涵蓋場次 line, which costs exactly one row and is worth it: with several 場次 open on one device,
+  a sheet that cannot be identified from paper alone is not filable. Beyond 13 it needs a second
+  page or a smaller row rhythm; the minimum funded class size is 10.
 - **zh-TW only**, a dated exception to invariant 5 recorded in the design doc. Every string already
   routes through `src/i18n/strings.ts`, so English is an implementation of the `Strings` type rather
   than a refactor.

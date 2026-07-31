@@ -545,12 +545,13 @@ permanently everywhere else.
 
 ## Navigation — a path, not a nav bar
 
-This product is a workflow. Five surfaces, and they nest:
+This product is a workflow. Six surfaces, and they nest:
 
 ```
-場次設定 ──► 本期名單 ──┬──► 王阿姨・量測 ──► 王阿姨・本次量測 ──► 王阿姨・紀錄
-                       ├──► 王阿姨・紀錄
-                       └──► 報表
+場次清單 ──┬──► 新增場次
+           └──► 本期名單 ──┬──► 王阿姨・量測 ──► 王阿姨・本次量測 ──► 王阿姨・紀錄
+                          ├──► 王阿姨・紀錄
+                          └──► 報表
 ```
 
 A row of top-level tabs would misdescribe that: it would imply you can be "in"
@@ -559,7 +560,7 @@ header renders **the actual path to where you are, and every segment of it is a
 button.** Two guarantees fall out, and a facilitator can rely on both without
 learning anything:
 
-- **Home is always the first segment**, and it always returns to 場次設定.
+- **Home is always the first segment**, and it always returns to 場次清單.
 - **Back is always the segment before the current one** — one level *up*, by
   construction rather than by history. A browser-style back that retraced visits
   would send someone who reached 紀錄 from a finished 量測 back into the trial
@@ -575,20 +576,135 @@ underlined text, so "tappable" is not something you have to infer.
 surface and a well-formed outline — the trial screen had no heading at all before
 this, and the setup screen and the sheet each briefly had two.
 
-**The phase chip is read-only.** Phase is chosen once, on setup. A control that
-changes which assessment point you are recording into must not sit beside a thing
-that only says where you are — that was the roster rail's 切換至前測, and it is
-gone.
+**The header's phase chip is gone**, and it is not coming back. It read
+本期階段：後測 and nothing else, which was adequate while there was one implicit
+session and pre-versus-post was the only ambiguity. With several 場次 open on one
+device it is not: 據點, 期別 and 階段 all have to be readable together before
+anyone presses 開始, and a chip in the end slot beside a demo badge is not where
+that belongs. It moved to the session context band below the header — see
+**Several 場次 at once** below.
+
+The header still answers only "where am I". The band answers "what am I
+recording into". Neither is a control that changes the answer: switching happens
+on the session list, and only there.
 
 The rail keeps the primary forward action on each surface, which is what a
 standing operator's thumb is already aimed at. **The header is for orientation;
 the rail is for doing.**
 
+## Several 場次 at once
+
+A 據點 runs a 後測 for one 期 in the morning and a 前測 for another in the
+afternoon, and the machine does not get put away in between. A 場次 is therefore
+a first-class entity with a status — 進行中 or 已結束 — and the root surface is a
+list of them rather than one implicit current session.
+
+**The whole design serves one failure.** With a single session it was impossible
+to record a trial into the wrong place. With several it is not, and the failure
+is silent: a trial recorded against the wrong 期 or the wrong 階段 surfaces weeks
+later as a wrong number in a 成果報告, with nothing on the printed sheet to
+reveal it. Nobody would ever find it. Everything below is a response to that, and
+none of it is a warning dialog.
+
+### Nothing is selected for you
+
+The session list selects nothing on load. No "resume the most recent open
+session", no "there is only one open session so use it". An app that guessed
+right most of the time would be worse than one that is obviously silent, because
+the once it guessed wrong would be unfindable. Picking is one tap, and it is the
+tap that makes everything after it unambiguous.
+
+The list is **grouped by status** — 進行中 above 已結束 — rather than coloured by
+it. The grouping does the scanning work, so the two status marks need no hue and
+the product does not have to invent a sixth colour channel. They do get a fourth
+disjoint SHAPE family: tracking is circles and a square, outcomes are bars and
+polygons, camera signal is a stepped meter, and a 場次 is a bracket — open at one
+end or closed at both. A session is an interval of time, so it is drawn as one.
+
+### The session context band
+
+**據點, 期別, 階段 and date, together, at facilitator reading size, on every
+surface where a trial can be started or recorded** — roster, trial, result,
+participant record and sheet. 56 px, its own surface lightness, directly under
+the header.
+
+It replaced the header's read-only phase chip rather than being added beside it,
+so this is one band of chrome becoming two and not three. That costs the
+participant field 56 px on a surface whose largest element is 192 px, and it buys
+knowing which 期 a number lands in. That trade is not close.
+
+**階段 carries the extra weight** inside the band, and inside every session list
+row. 前測 and 後測 are the pair that gets confused: they look alike, read alike,
+and are the two values a facilitator is most likely to get wrong at three in the
+afternoon.
+
+The band is information, never a control. There is no switcher in it. And it is
+`no-print`, like every other piece of app chrome — the sheet carries its own
+coverage line instead.
+
+### Refusing rather than guessing
+
+The product already refuses in one place: 不可比較 on the sheet, where two trials
+cannot honestly be subtracted. The same posture now runs the other direction. A
+trial cannot begin unless the active session is **present, resolvable to a 期,
+still open, and actually listing the person about to be measured**. `trialGate`
+in `src/domain/sessions.ts` returns a reason rather than a boolean, because every
+refusal has to be said out loud.
+
+A refusal is a surface, not a disabled button. A greyed-out control tells a
+standing part-time worker that something is wrong and nothing about what to do,
+and the thing they will do next is press it again. So each one names the reason
+in a sentence and offers the one route out. It is not styled as an error either:
+`--alert` is reserved for the machine failing, and a refusal is the machine
+working correctly.
+
+On a finished 場次 the roster is read-only — one sentence at the top, and no
+開始量測 control at all rather than twelve dead ones. Rows that already have a
+record keep 查看紀錄, because reading a finished session is what a finished
+session is for.
+
+The same guard lives at the data-source seam. A refusal that exists only in a
+component is one careless call site away from being gone.
+
+### Switching is deliberate, and visible when it happens
+
+The active session changes in exactly one place: choosing a row on the session
+list. Never as a side effect of navigating, never as a consequence of a phase
+toggle — that control is gone and stays gone. When it does change, the band
+announces it in a `role="status"` line for eight seconds, with an accent rule
+under the band. A steady state, not an animation, so `prefers-reduced-motion`
+needs no second implementation.
+
+Ending a 場次 and reopening one are both confirmed, and both name the session
+they will act on. The end copy states the reversal in the same breath as the
+consequence: a facilitator who believes an action cannot be undone will avoid
+using it, and unended sessions are how 場次 stop being distinguishable at all.
+
+### One 場次 per (據點, 年度, 期, 階段)
+
+A second 後測 in the same 期 would be exactly the ambiguity this all exists to
+remove, so configuring a combination that already has a 場次 resumes it rather
+than forking it, and reopens it if it had been ended. That is the right behaviour
+and the wrong thing to do silently, so the setup screen says which before the
+button is pressed — 開始本場 becomes 接續本場 or 重新開啟並開始 — and preloads
+the attendance list from that 場次 rather than from the site's whole book.
+
+### The sheet says what it covers
+
+With several 場次 open on one device, 前後測時間紀錄表 is no longer enough to
+identify the paper in front of you: two sheets from the same morning can carry
+different 期 and look identical. So the head names the 期, both 階段 with their
+dates and attendance, and which 場次 the sheet was produced from.
+
+That line costs the sheet **one row of one-page capacity** — 14 participants down
+to 13, measured by rendering to A4 and counting pages, not estimated. A first
+draft boxed it and cost two. The minimum funded class is 10.
+
 ## Session setup
 
-The entry point, before the roster. Where 據點, 期 (year + cycle), phase and
-today's attendance are configured, plus a camera framing check before anyone sits
-down.
+Reached from the session list, not the entry point any more. Where 據點, 期 (year
++ cycle), phase and today's attendance are configured, plus a camera framing
+check before anyone sits down.
 
 **Invariant 2 is enforced by the interface's shape, not by discipline.** The
 add-participant form has exactly one text input and it collects a short display

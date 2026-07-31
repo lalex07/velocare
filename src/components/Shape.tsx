@@ -26,6 +26,12 @@ export type ShapeKind =
   | 'signal-full' /* camera delivering frames        */
   | 'signal-weak' /* camera stalled                  */
   | 'signal-none' /* camera off or ended             */
+  /* 場次 status — a FOURTH disjoint family, and it has to be, because it appears
+     on the same surfaces as the outcome marks. A session is an interval of time,
+     so it is drawn as one: a bracket that is still open, and a bracket that has
+     been closed. Neither is a circle, a bar, a polygon or a meter. */
+  | 'span-open' /* 場次 進行中                     */
+  | 'span-closed' /* 場次 已結束                     */
 
 export function Shape({ kind, className }: { kind: ShapeKind; className?: string }) {
   return (
@@ -93,6 +99,24 @@ export function Shape({ kind, className }: { kind: ShapeKind; className?: string
           <rect x="6.25" y="6.5" width="3.5" height="8" fill="none" stroke="currentColor" strokeWidth="1.5" />
           <rect x="11" y="3" width="3.5" height="11.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
         </>
+      )}
+
+      {/* An interval still running: one bracket, then an arrow onward. */}
+      {kind === 'span-open' && (
+        <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 2.5H2.5v11H5" />
+          <path d="M7.5 8h6.5" />
+          <path d="M11.5 5.5L14 8l-2.5 2.5" />
+        </g>
+      )}
+
+      {/* An interval closed at both ends. */}
+      {kind === 'span-closed' && (
+        <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 2.5H2.5v11H5" />
+          <path d="M11 2.5h2.5v11H11" />
+          <path d="M6.75 8h2.5" />
+        </g>
       )}
     </svg>
   )

@@ -29,10 +29,13 @@
    It is now a badge in the end slot; see DemoDisclosure.tsx for why folding it
    does not weaken the disclosure.
 
-   The phase chip is READ-ONLY. Phase is chosen once, on the setup screen. A
-   control that changes which assessment point you are recording into must not
-   sit beside a thing that only says where you are — that was the old roster
-   rail's 切換至前測, and it is gone.
+   THE PHASE CHIP IS GONE FROM HERE. It said 本期階段：後測 and nothing else,
+   which was adequate while there was one implicit session and pre-versus-post
+   was the only ambiguity. With several 場次 open on one device it is not: 據點,
+   期別 and 階段 all have to be readable together before anyone presses 開始, and
+   a chip in the end slot beside a demo badge is not where that belongs. It moved
+   to the session context band below this header — see SessionBand.tsx. The
+   header answers "where am I"; the band answers "what am I recording into".
    ───────────────────────────────────────────────────────────────────────────── */
 
 import { Icon, type IconKind } from './Icon'
@@ -48,13 +51,11 @@ export interface Crumb {
 
 export function AppHeader({
   trail,
-  phaseWord,
   demoSlot,
   scenarioSlot,
 }: {
   /** Root first, current surface last. Always at least one entry. */
   trail: readonly Crumb[]
-  phaseWord: string | null
   /** The persistent 示範模式 marker, folded in from what used to be a
       full-width strip below this header. */
   demoSlot?: React.ReactNode
@@ -111,12 +112,6 @@ export function AppHeader({
 
       <div className="hdr__end">
         {demoSlot}
-        {phaseWord && (
-          <span className="hdr__phase">
-            <span className="hdr__phase-label">{strings.nav.phaseLabel}</span>
-            <span className="hdr__phase-value">{phaseWord}</span>
-          </span>
-        )}
         {scenarioSlot}
       </div>
     </header>

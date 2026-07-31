@@ -3,28 +3,41 @@ import { useDataSource } from '../data/context'
 import { resolveTrials, type ResolvedTrial } from '../domain/records'
 import type { AssessmentSession, Block, SessionId, TrackingState } from '../domain/types'
 
-export interface SessionView {
-  readonly block: Block | null
+export interface SessionsView {
+  /** Every 期 the store knows about. */
+  readonly blocks: readonly Block[]
+  /** Every 場次, open and completed, across every 期. */
   readonly sessions: readonly AssessmentSession[]
-  readonly active: AssessmentSession | null
-  readonly resolved: readonly ResolvedTrial[]
-  /** Resolved trials for every session, keyed by sessionId. The sheet needs both. */
+  /** Resolved trials for every session, keyed by sessionId. */
   readonly allResolved: ReadonlyMap<SessionId, readonly ResolvedTrial[]>
+  /** False until the first load lands, so surfaces can hold rather than flash. */
+  readonly loaded: boolean
   readonly refresh: () => void
 }
 
-/** Loads the 期 and keeps resolved trials in sync with the append-only log. */
-export function useSession(activePhase: 'pre' | 'post' = 'post'): SessionView {
+/**
+ * Loads every 期 and every 場次, and keeps resolved trials in sync with the
+ * append-only log.
+ *
+ * DELIBERATELY HAS NO NOTION OF "THE ACTIVE SESSION". Several 場次 are open at
+ * once, and a hook that picked one — the newest, the only open one, the one
+ * matching a phase — would be guessing on the facilitator's behalf at exactly
+ * the point where a guess becomes a wrong number in a 成果報告. Which session is
+ * active is App state, set by an explicit choice on the session list, and every
+ * surface that can record reads it back from the context band.
+ */
+export function useSessions(): SessionsView {
   const src = useDataSource()
-  const [block, setBlock] = useState<Block | null>(null)
+  const [blocks, setBlocks] = useState<readonly Block[]>([])
   const [sessions, setSessions] = useState<readonly AssessmentSession[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [allResolved, setAllResolved] = useState<ReadonlyMap<SessionId, readonly ResolvedTrial[]>>(
     new Map(),
   )
 
   const load = useCallback(async () => {
-    const [b, ss] = await Promise.all([src.getBlock(), src.getSessions()])
-    setBlock(b)
+    const [bs, ss] = await Promise.all([src.getBlocks(), src.getSessions()])
+    setBlocks(bs)
     setSessions(ss)
     const entries = await Promise.all(
       ss.map(async (s) => {
@@ -33,6 +46,7 @@ export function useSession(activePhase: 'pre' | 'post' = 'post'): SessionView {
       }),
     )
     setAllResolved(new Map(entries))
+    setLoaded(true)
   }, [src])
 
   useEffect(() => {
@@ -40,10 +54,7 @@ export function useSession(activePhase: 'pre' | 'post' = 'post'): SessionView {
     return src.subscribeRecords(() => void load())
   }, [load, src])
 
-  const active = sessions.find((s) => s.phase === activePhase) ?? null
-  const resolved = (active && allResolved.get(active.sessionId)) ?? []
-
-  return { block, sessions, active, resolved, allResolved, refresh: () => void load() }
+  return { blocks, sessions, allResolved, loaded, refresh: () => void load() }
 }
 
 /** Tracking state for the rail indicator. */

@@ -72,6 +72,67 @@ export interface Strings {
     readonly backToRoster: string
     readonly srRepAnnounce: (n: number, total: number) => string
   }
+  /* ── 場次 ────────────────────────────────────────────────────────────────
+     Several are open on one device at once, so every one of these strings is
+     load-bearing against ONE failure: a trial recorded into the wrong 期 or the
+     wrong 階段, which nothing on the printed sheet would ever reveal. ───────── */
+  readonly session: {
+    /** Landmark name for the context band. */
+    readonly contextLabel: string
+    readonly siteLabel: string
+    readonly blockLabel: string
+    readonly phaseLabel: string
+    readonly dateLabel: string
+    readonly statusOpen: string
+    readonly statusCompleted: string
+    /** One line naming a session in full. Used wherever it has to be unambiguous. */
+    readonly describe: (site: string, block: string, phase: string) => string
+    /** Announced when the active session changes. Switching is never silent. */
+    readonly switched: (what: string) => string
+
+    readonly listLede: string
+    readonly groupOpen: string
+    readonly groupCompleted: string
+    readonly resume: string
+    readonly view: string
+    readonly resumeFor: (what: string) => string
+    readonly viewFor: (what: string) => string
+    readonly newSession: string
+    readonly current: string
+    readonly progress: (done: number, total: number) => string
+    readonly attendeeCount: (n: number) => string
+    readonly emptyTitle: string
+    readonly emptyBody: string
+
+    readonly endAction: string
+    readonly endTitle: string
+    readonly endBody: string
+    readonly endConfirm: string
+    readonly reopenAction: string
+    readonly reopenTitle: string
+    readonly reopenBody: string
+    readonly reopenConfirm: string
+    readonly cancel: string
+
+    /** Refusals. Every one names what to do next, not just what went wrong. */
+    readonly refuseTitle: string
+    readonly refuse: {
+      readonly no_session: string
+      readonly unresolved: string
+      readonly completed: string
+      readonly no_attendees: string
+      readonly not_attending: string
+    }
+    readonly refuseGoto: string
+    readonly readOnlyNote: string
+
+    /** Setup, when the configured 據點 / 期 / 階段 already has a 場次. */
+    readonly willResume: (what: string) => string
+    readonly willReopen: (what: string) => string
+    readonly willCreate: string
+    readonly beginResume: string
+    readonly beginReopen: string
+  }
   readonly setup: {
     readonly title: string
     readonly lede: string
@@ -155,6 +216,7 @@ export interface Strings {
     readonly switchToPost: string
     readonly home: string
     readonly back: string
+    readonly placeSessions: string
     readonly placeSetup: string
     /** Landmark label for the back-to-hub control. */
     readonly whereLabel: string
@@ -164,7 +226,6 @@ export interface Strings {
     readonly placeResult: (label: string) => string
     readonly placeTrialResult: (label: string) => string
     readonly placeSheet: string
-    readonly phaseLabel: string
   }
   readonly camera: {
     readonly title: string
@@ -253,6 +314,12 @@ export interface Strings {
     readonly colPost: string
     readonly colChange: string
     readonly colNote: string
+    /** Which 期 and which 階段 this sheet covers. Screen AND paper. */
+    readonly coverage: string
+    readonly coveragePhase: (phase: string, date: string, n: number) => string
+    readonly coverageNotHeld: (phase: string) => string
+    readonly generatedFrom: string
+    readonly generatedFromValue: (phase: string, date: string) => string
     readonly unitSeconds: string
     readonly notRecorded: string
     readonly notComparable: string
@@ -274,11 +341,11 @@ export interface Strings {
     readonly title: string
     readonly hint: string
     readonly close: string
-    readonly groupSurfaces: string
+    readonly groupSessions: string
     readonly groupTrial: string
     readonly groupEdge: string
     readonly groupSheet: string
-    readonly rosterFor: (phase: string) => string
+    readonly sessionList: string
     readonly sheetMixed: string
     readonly trials: {
       readonly complete_typical: string
@@ -370,6 +437,66 @@ const zhTW: Strings = {
     restart: '重新開始',
     backToRoster: '回名單',
     srRepAnnounce: (n, total) => `第 ${n} 次，共 ${total} 次`,
+  },
+
+  session: {
+    contextLabel: '目前場次',
+    siteLabel: '據點',
+    blockLabel: '期別',
+    phaseLabel: '階段',
+    dateLabel: '日期',
+    statusOpen: '進行中',
+    statusCompleted: '已結束',
+    // The full name of a session, in the order a facilitator reads it aloud.
+    describe: (site, block, phase) => `${site}　${block}　${phase}`,
+    switched: (what) => `已切換場次：${what}`,
+
+    listLede: '同一台機器上可同時開啟多個場次。請先選定要記錄的場次，再開始量測。',
+    groupOpen: '進行中的場次',
+    groupCompleted: '已結束的場次',
+    resume: '進入本場',
+    view: '查看本場',
+    resumeFor: (what) => `進入本場：${what}`,
+    viewFor: (what) => `查看本場：${what}`,
+    newSession: '新增場次',
+    current: '目前場次',
+    progress: (done, total) => `已量測 ${done} / ${total} 人`,
+    attendeeCount: (n) => `出席 ${n} 人`,
+    emptyTitle: '尚無任何場次',
+    emptyBody: '請先新增一個場次，設定據點、期別與階段。',
+
+    endAction: '結束本場',
+    endTitle: '結束本場',
+    // States the consequence and the reversal in the same breath: a facilitator
+    // who cannot undo an action will avoid using it.
+    endBody: '結束後本場不再接受量測、更正或無法進行的紀錄。已記錄的資料完整保留，仍可查看與列印。日後可再重新開啟。',
+    endConfirm: '確認結束本場',
+    reopenAction: '重新開啟本場',
+    reopenTitle: '重新開啟本場',
+    reopenBody: '重新開啟後，本場可繼續記錄量測。新的紀錄會計入本期本階段。',
+    reopenConfirm: '確認重新開啟',
+    cancel: '取消',
+
+    // ── Refusals ──────────────────────────────────────────────────────────
+    // Same posture as 不可比較 on the報表: refuse rather than record into a
+    // guess. Each line says what to do next, because a disabled control tells a
+    // standing工作人員 nothing.
+    refuseTitle: '尚未確定要記錄到哪一場',
+    refuse: {
+      no_session: '目前沒有選定的場次。請先回到場次清單，選定本次要記錄的據點、期別與階段。',
+      unresolved: '本場次的期別資料不完整，無法確認要記錄到哪一期。請回到場次清單重新選定。',
+      completed: '本場已結束，不再接受新的量測。若確定要繼續記錄，請先於本頁重新開啟本場。',
+      no_attendees: '本場出席名單為空，沒有可記錄的對象。請於場次設定勾選今天到場的長輩。',
+      not_attending: '這位長輩不在本場的出席名單內。請確認選對場次，或於場次設定將其加入本場。',
+    },
+    refuseGoto: '回場次清單',
+    readOnlyNote: '本場已結束，僅供查看。若要繼續記錄，請先重新開啟本場。',
+
+    willResume: (what) => `此組合已有場次，將接續原場次：${what}`,
+    willReopen: (what) => `此場次已結束，開始後將重新開啟：${what}`,
+    willCreate: '此組合尚無場次，將建立新的場次。',
+    beginResume: '接續本場',
+    beginReopen: '重新開啟並開始',
   },
 
   setup: {
@@ -466,9 +593,10 @@ const zhTW: Strings = {
   nav: {
     switchToPre: '切換至前測',
     switchToPost: '切換至後測',
-    home: '場次設定',
+    home: '場次清單',
     back: '上一層',
-    placeSetup: '場次設定',
+    placeSessions: '場次清單',
+    placeSetup: '新增場次',
     whereLabel: '目前位置',
     backToRoster: '回本期名單',
     placeRoster: '本期名單',
@@ -476,7 +604,6 @@ const zhTW: Strings = {
     placeResult: (label) => `${label}．紀錄`,
     placeTrialResult: (label) => `${label}．本次量測`,
     placeSheet: '報表',
-    phaseLabel: '本期階段',
   },
 
   camera: {
@@ -581,6 +708,14 @@ const zhTW: Strings = {
     colPost: '後測（秒）',
     colChange: '差值（秒）',
     colNote: '備註',
+    // Which 期 and which 階段 this sheet covers, stated on the sheet itself.
+    // With several 場次 open on one device, a report that only says "前後測" is
+    // a report nobody can check.
+    coverage: '涵蓋場次',
+    coveragePhase: (phase, date, n) => `${phase} ${date}（出席 ${n} 人）`,
+    coverageNotHeld: (phase) => `${phase} 未進行`,
+    generatedFrom: '產生自',
+    generatedFromValue: (phase, date) => `${phase} ${date}`,
     unitSeconds: '秒',
     notRecorded: '未記錄',
     notComparable: '不可比較',
@@ -614,11 +749,11 @@ const zhTW: Strings = {
     title: '示範情境',
     hint: '按 S 開啟或關閉。此面板僅存在於示範版本。',
     close: '關閉',
-    groupSurfaces: '主要畫面',
+    groupSessions: '切換場次',
     groupTrial: '量測過程',
     groupEdge: '各種結果',
     groupSheet: '報表',
-    rosterFor: (phase) => `名單 · ${phase}`,
+    sessionList: '場次清單',
     sheetMixed: '報表 · 混合結果',
     trials: {
       complete_typical: '典型完成',

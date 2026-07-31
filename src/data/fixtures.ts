@@ -4,10 +4,22 @@
    In October a LocalhostDataSource implements the identical interface against
    the Python pose pipeline. No UI code imports this file directly.
 
-   The 期 is deliberately mid-flight: the pre session is fully assessed so the
-   sheet can show a real pre/post comparison, and the post session is partway
-   through with one of every edge case already in the log, including a void
-   followed by a successful restart and a correction on top of a complete trial.
+   SEVERAL 場次 ARE SEEDED OPEN AT ONCE, because that is the state the product
+   now has to survive and a fixture set with one session would not demonstrate
+   it. Five sessions across three 期 across two 據點:
+
+     115 年度第 3 期 · 示範社區照顧關懷據點
+       前測  2026-05-04   已結束    12 人, all assessed
+       後測  2026-07-27   進行中    12 人, 7 assessed — every edge case lives here
+     115 年度第 1 期 · 示範第二關懷據點
+       前測  2026-07-30   進行中    10 人, 5 assessed
+     114 年度第 3 期 · 示範社區照顧關懷據點
+       前測  2025-10-06   已結束    10 人, all assessed
+       後測  2025-12-29   已結束     9 人 — one absent, so the sheet shows 未記錄
+
+   Two of them are open, mid-progress, at different 據點 and different 階段: the
+   exact configuration in which a trial could be recorded into the wrong place.
+   NOTHING IS ACTIVE ON BOOT. The device does not guess which one you meant.
    ───────────────────────────────────────────────────────────────────────────── */
 
 import {
@@ -30,9 +42,18 @@ import {
 } from '../domain/types'
 import type { SessionDataSource, TrialId, Unsubscribe } from './SessionDataSource'
 
-/* ── The 期 ───────────────────────────────────────────────────────────────── */
+/* ── 據點 and enrolment ────────────────────────────────────────────────────── */
 
-const PARTICIPANTS: readonly Participant[] = [
+const SITES: readonly Site[] = [
+  { siteId: 'SITE-01', name: '示範社區照顧關懷據點' },
+  { siteId: 'SITE-02', name: '示範第二關懷據點' },
+]
+
+/* Enrolment is site-level and outlives any one 期, so it is deliberately LARGER
+   than any single 期's roster: the setup screen has something real to select
+   from, and the ">= 10" count can be moved above and below the funding floor by
+   picking people. */
+const ENROLLED_01: readonly Participant[] = [
   { id: 'P-0041', label: '王阿姨' },
   { id: 'P-0042', label: '陳媽' },
   { id: 'P-0043', label: '林伯' },
@@ -45,49 +66,129 @@ const PARTICIPANTS: readonly Participant[] = [
   { id: 'P-0050', label: '許阿姨' },
   { id: 'P-0051', label: '曾伯' },
   { id: 'P-0052', label: '何媽' },
-]
-
-/* Enrolment is deliberately LARGER than the 期's attendee list, so the setup
-   screen has something real to select from and the ">= 10" count can be moved
-   above and below the funding floor by picking people. */
-const ENROLLED: readonly Participant[] = [
-  ...PARTICIPANTS,
   { id: 'P-0053', label: '周伯' },
   { id: 'P-0054', label: '劉阿姨' },
   { id: 'P-0055', label: '邱媽' },
 ]
 
-const SITES: readonly Site[] = [
-  { siteId: 'SITE-01', name: '示範社區照顧關懷據點' },
-  { siteId: 'SITE-02', name: '示範第二關懷據點' },
+const ENROLLED_02: readonly Participant[] = [
+  { id: 'P-0061', label: '簡阿姨' },
+  { id: 'P-0062', label: '柯伯' },
+  { id: 'P-0063', label: '洪媽' },
+  { id: 'P-0064', label: '莊姐' },
+  { id: 'P-0065', label: '沈伯' },
+  { id: 'P-0066', label: '呂阿姨' },
+  { id: 'P-0067', label: '施媽' },
+  { id: 'P-0068', label: '賴伯' },
+  { id: 'P-0069', label: '謝姐' },
+  { id: 'P-0070', label: '范阿姨' },
+  { id: 'P-0071', label: '廖伯' },
+  { id: 'P-0072', label: '潘媽' },
 ]
 
-const BLOCK: Block = {
-  blockId: 'B-2026-03',
+const pick = (from: readonly Participant[], ids: readonly ParticipantId[]) =>
+  from.filter((p) => ids.includes(p.id))
+
+const idsOf = (ps: readonly Participant[]) => ps.map((p) => p.id)
+
+/* ── The 期 ───────────────────────────────────────────────────────────────── */
+
+const B_115_3_PEOPLE = ENROLLED_01.slice(0, 12) // P-0041 … P-0052
+const B_114_3_PEOPLE = ENROLLED_01.slice(0, 10) // P-0041 … P-0050
+const B_115_1_PEOPLE = ENROLLED_02.slice(0, 10) // P-0061 … P-0070
+
+const BLOCK_115_3: Block = {
+  blockId: 'B-SITE-01-115-3',
   siteId: 'SITE-01',
   siteName: '示範社區照顧關懷據點',
   blockName: '115 年度第 3 期',
+  year: 115,
+  cycle: 3,
   startedIso: '2026-05-04',
-  participants: PARTICIPANTS,
+  participants: B_115_3_PEOPLE,
 }
 
-const ALL_IDS = PARTICIPANTS.map((p) => p.id)
+const BLOCK_115_1: Block = {
+  blockId: 'B-SITE-02-115-1',
+  siteId: 'SITE-02',
+  siteName: '示範第二關懷據點',
+  blockName: '115 年度第 1 期',
+  year: 115,
+  cycle: 1,
+  startedIso: '2026-07-30',
+  participants: B_115_1_PEOPLE,
+}
 
-const SESSION_PRE: AssessmentSession = {
-  sessionId: 'S-pre',
-  blockId: BLOCK.blockId,
+const BLOCK_114_3: Block = {
+  blockId: 'B-SITE-01-114-3',
+  siteId: 'SITE-01',
+  siteName: '示範社區照顧關懷據點',
+  blockName: '114 年度第 3 期',
+  year: 114,
+  cycle: 3,
+  startedIso: '2025-10-06',
+  participants: B_114_3_PEOPLE,
+}
+
+const BLOCKS: readonly Block[] = [BLOCK_115_3, BLOCK_115_1, BLOCK_114_3]
+
+/* ── The 場次 ─────────────────────────────────────────────────────────────── */
+
+const S_115_3_PRE: AssessmentSession = {
+  sessionId: 'S-115-3-pre',
+  blockId: BLOCK_115_3.blockId,
   phase: 'pre',
   dateIso: '2026-05-04',
-  attendeeIds: ALL_IDS,
+  status: 'completed',
+  attendeeIds: idsOf(B_115_3_PEOPLE),
 }
 
-const SESSION_POST: AssessmentSession = {
-  sessionId: 'S-post',
-  blockId: BLOCK.blockId,
+const S_115_3_POST: AssessmentSession = {
+  sessionId: 'S-115-3-post',
+  blockId: BLOCK_115_3.blockId,
   phase: 'post',
   dateIso: '2026-07-27',
-  attendeeIds: ALL_IDS,
+  status: 'open',
+  attendeeIds: idsOf(B_115_3_PEOPLE),
 }
+
+const S_115_1_PRE: AssessmentSession = {
+  sessionId: 'S-115-1-pre',
+  blockId: BLOCK_115_1.blockId,
+  phase: 'pre',
+  dateIso: '2026-07-30',
+  status: 'open',
+  attendeeIds: idsOf(B_115_1_PEOPLE),
+}
+
+const S_114_3_PRE: AssessmentSession = {
+  sessionId: 'S-114-3-pre',
+  blockId: BLOCK_114_3.blockId,
+  phase: 'pre',
+  dateIso: '2025-10-06',
+  status: 'completed',
+  attendeeIds: idsOf(B_114_3_PEOPLE),
+}
+
+/* One person absent at the 後測. Attendance varies session to session — that is
+   why it is per-session data — and the sheet shows the gap as 未記錄 rather than
+   pretending she was measured. */
+const S_114_3_POST: AssessmentSession = {
+  sessionId: 'S-114-3-post',
+  blockId: BLOCK_114_3.blockId,
+  phase: 'post',
+  dateIso: '2025-12-29',
+  status: 'completed',
+  attendeeIds: idsOf(B_114_3_PEOPLE).filter((id) => id !== 'P-0049'),
+}
+
+const SESSIONS: readonly AssessmentSession[] = [
+  S_115_3_PRE,
+  S_115_3_POST,
+  S_115_1_PRE,
+  S_114_3_PRE,
+  S_114_3_POST,
+]
 
 const SEAT_CM = 45
 
@@ -111,8 +212,8 @@ function incomplete(repTimesMs: readonly number[]): Outcome {
 function handContact(repTimesMs: readonly number[], firstContactRep: number): Outcome {
   return {
     kind: 'hand_contact',
-    repsCompleted: repTimesMs.length,
     repTimesMs,
+    repsCompleted: repTimesMs.length,
     elapsedMs: sum(repTimesMs),
     firstContactRep,
     protocolInvalid: true,
@@ -154,48 +255,47 @@ function at(dateIso: string, fromHour: number, minuteOffset: number, second = 0)
 function buildLog(): AnyRecord[] {
   const log: AnyRecord[] = []
 
-  /* ── PRE session: all 12 assessed ─────────────────────────────────────── */
-  const pre = (min: number, sec = 0) => at(SESSION_PRE.dateIso, 9, min, sec)
-  log.push(trial(SESSION_PRE.sessionId, 'P-0041', complete([2900, 3100, 3200, 3400, 3600]), pre(12)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0042', complete([3400, 3600, 3900, 4100, 4400]), pre(18)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0043', complete([2400, 2500, 2600, 2700, 2800]), pre(24)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0044', complete([3800, 4000, 4300, 4600, 5000]), pre(31)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0045', complete([2700, 2800, 2900, 3000, 3200]), pre(37)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0046', incomplete([4200, 4600, 5100]), pre(43)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0047', complete([3100, 3300, 3400, 3600, 3800]), pre(49)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0048', handContact([3300, 3500, 3900, 4300, 4700], 3), pre(55)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0049', complete([2600, 2700, 2800, 3000, 3100]), pre(61)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0050', unable, pre(66)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0051', complete([3000, 3200, 3300, 3500, 3700]), pre(70)))
-  log.push(trial(SESSION_PRE.sessionId, 'P-0052', complete([3600, 3800, 4100, 4400, 4800]), pre(76)))
+  /* ── 115-3 前測: all 12 assessed, session已結束 ──────────────────────────── */
+  const pre = (min: number, sec = 0) => at(S_115_3_PRE.dateIso, 9, min, sec)
+  const s3pre = S_115_3_PRE.sessionId
+  log.push(trial(s3pre, 'P-0041', complete([2900, 3100, 3200, 3400, 3600]), pre(12)))
+  log.push(trial(s3pre, 'P-0042', complete([3400, 3600, 3900, 4100, 4400]), pre(18)))
+  log.push(trial(s3pre, 'P-0043', complete([2400, 2500, 2600, 2700, 2800]), pre(24)))
+  log.push(trial(s3pre, 'P-0044', complete([3800, 4000, 4300, 4600, 5000]), pre(31)))
+  log.push(trial(s3pre, 'P-0045', complete([2700, 2800, 2900, 3000, 3200]), pre(37)))
+  log.push(trial(s3pre, 'P-0046', incomplete([4200, 4600, 5100]), pre(43)))
+  log.push(trial(s3pre, 'P-0047', complete([3100, 3300, 3400, 3600, 3800]), pre(49)))
+  log.push(trial(s3pre, 'P-0048', handContact([3300, 3500, 3900, 4300, 4700], 3), pre(55)))
+  log.push(trial(s3pre, 'P-0049', complete([2600, 2700, 2800, 3000, 3100]), pre(61)))
+  log.push(trial(s3pre, 'P-0050', unable, pre(66)))
+  log.push(trial(s3pre, 'P-0051', complete([3000, 3200, 3300, 3500, 3700]), pre(70)))
+  log.push(trial(s3pre, 'P-0052', complete([3600, 3800, 4100, 4400, 4800]), pre(76)))
 
-  /* ── POST session: mid-flight, 7 of 12 assessed ───────────────────────── */
-  const post = (min: number, sec = 0) => at(SESSION_POST.dateIso, 9, min, sec)
+  /* ── 115-3 後測: OPEN, mid-flight, 7 of 12 assessed ───────────────────────
+     Every edge case in the product lives in this one session, so the open 場次 a
+     demo lands on is the interesting one. */
+  const post = (min: number, sec = 0) => at(S_115_3_POST.dateIso, 9, min, sec)
+  const s3post = S_115_3_POST.sessionId
 
   // Straightforward improvements.
-  log.push(trial(SESSION_POST.sessionId, 'P-0041', complete([2500, 2600, 2700, 2800, 2900]), post(10)))
-  log.push(trial(SESSION_POST.sessionId, 'P-0042', complete([3000, 3100, 3300, 3500, 3700]), post(16)))
+  log.push(trial(s3post, 'P-0041', complete([2500, 2600, 2700, 2800, 2900]), post(10)))
+  log.push(trial(s3post, 'P-0042', complete([3000, 3100, 3300, 3500, 3700]), post(16)))
 
   // EDGE: void from tracking loss, then a successful restart. Both stay in the
   // log; only the restart represents the participant. Feeds the void-rate metric.
   log.push(
-    trial(
-      SESSION_POST.sessionId,
-      'P-0043',
-      { kind: 'void', reason: 'roi_multiple_people', repsCompleted: 2 },
-      post(21),
-    ),
+    trial(s3post, 'P-0043', { kind: 'void', reason: 'roi_multiple_people', repsCompleted: 2 }, post(21)),
   )
-  log.push(trial(SESSION_POST.sessionId, 'P-0043', complete([2200, 2300, 2300, 2400, 2500]), post(22, 30)))
+  log.push(trial(s3post, 'P-0043', complete([2200, 2300, 2300, 2400, 2500]), post(22, 30)))
 
   // EDGE: incomplete. Three reps is a valid recorded outcome, not an error.
-  log.push(trial(SESSION_POST.sessionId, 'P-0044', incomplete([4000, 4300, 4700]), post(28)))
+  log.push(trial(s3post, 'P-0044', incomplete([4000, 4300, 4700]), post(28)))
 
   // EDGE: abort with a reason. Does not represent the participant, so P-0045
   // still reads as outstanding on the roster.
   log.push(
     trial(
-      SESSION_POST.sessionId,
+      s3post,
       'P-0045',
       { kind: 'aborted', reason: 'interruption', repsCompleted: 1, elapsedMs: 3100 },
       post(33),
@@ -203,27 +303,66 @@ function buildLog(): AnyRecord[] {
   )
 
   // EDGE: hand contact. Recorded in full, marked protocol-invalid, no alarm.
-  log.push(trial(SESSION_POST.sessionId, 'P-0048', handContact([3000, 3200, 3500, 3800, 4000], 4), post(39)))
+  log.push(trial(s3post, 'P-0048', handContact([3000, 3200, 3500, 3800, 4000], 4), post(39)))
 
   // EDGE: unable to perform the protocol. Still enrolled, still counted present.
-  log.push(trial(SESSION_POST.sessionId, 'P-0050', unable, post(45)))
+  log.push(trial(s3post, 'P-0050', unable, post(45)))
 
   // EDGE: a correction appended on top of a complete trial. The original is
   // preserved forever; the roster shows the corrected outcome plus a marker.
-  const miscounted = trial(SESSION_POST.sessionId, 'P-0047', complete([3000, 3200, 3300, 3500, 3600]), post(51))
+  const miscounted = trial(s3post, 'P-0047', complete([3000, 3200, 3300, 3500, 3600]), post(51))
   log.push(miscounted)
   log.push({
     recordId: nextRecordId(),
     kind: 'correction',
-    sessionId: SESSION_POST.sessionId,
+    sessionId: s3post,
     participantId: 'P-0047',
     correctsRecordId: miscounted.recordId,
     outcome: incomplete([3000, 3200, 3300, 3500]),
     note: 'rep_miscount',
     atIso: post(52, 30),
   })
+  // Outstanding at 115-3 後測: P-0046, P-0049, P-0051, P-0052, and P-0045.
 
-  // Outstanding at post: P-0046, P-0049, P-0051, P-0052, and P-0045 (abort only).
+  /* ── 115-1 前測 at the OTHER 據點: OPEN, 5 of 10 assessed ────────────────
+     A second open session, at a different 據點, in a different 階段, on the same
+     device. This is the pair that makes misattribution possible. */
+  const other = (min: number, sec = 0) => at(S_115_1_PRE.dateIso, 14, min, sec)
+  const s1pre = S_115_1_PRE.sessionId
+  log.push(trial(s1pre, 'P-0061', complete([3200, 3400, 3500, 3700, 3900]), other(8)))
+  log.push(trial(s1pre, 'P-0062', complete([2800, 2900, 3000, 3100, 3300]), other(14)))
+  log.push(trial(s1pre, 'P-0063', incomplete([4400, 4800, 5200, 5600]), other(20)))
+  log.push(trial(s1pre, 'P-0064', complete([3500, 3700, 3900, 4200, 4500]), other(26)))
+  log.push(trial(s1pre, 'P-0065', handContact([3900, 4200, 4500, 4900, 5300], 2), other(32)))
+  // Outstanding: P-0066 … P-0070.
+
+  /* ── 114 年度第 3 期: both 場次 已結束. A finished 期, viewable and printable. */
+  const oldPre = (min: number) => at(S_114_3_PRE.dateIso, 9, min)
+  const p4pre = S_114_3_PRE.sessionId
+  log.push(trial(p4pre, 'P-0041', complete([3100, 3300, 3400, 3600, 3900]), oldPre(11)))
+  log.push(trial(p4pre, 'P-0042', complete([3700, 3900, 4200, 4500, 4900]), oldPre(17)))
+  log.push(trial(p4pre, 'P-0043', complete([2600, 2700, 2800, 2900, 3100]), oldPre(23)))
+  log.push(trial(p4pre, 'P-0044', complete([4100, 4400, 4700, 5000, 5400]), oldPre(29)))
+  log.push(trial(p4pre, 'P-0045', complete([2900, 3000, 3100, 3300, 3500]), oldPre(35)))
+  log.push(trial(p4pre, 'P-0046', incomplete([4600, 5000, 5500]), oldPre(41)))
+  log.push(trial(p4pre, 'P-0047', complete([3300, 3500, 3700, 3900, 4200]), oldPre(47)))
+  log.push(trial(p4pre, 'P-0048', complete([3600, 3800, 4000, 4300, 4600]), oldPre(53)))
+  log.push(trial(p4pre, 'P-0049', complete([2800, 2900, 3000, 3200, 3400]), oldPre(59)))
+  log.push(trial(p4pre, 'P-0050', unable, oldPre(64)))
+
+  const oldPost = (min: number) => at(S_114_3_POST.dateIso, 9, min)
+  const p4post = S_114_3_POST.sessionId
+  log.push(trial(p4post, 'P-0041', complete([2800, 2900, 3000, 3200, 3400]), oldPost(10)))
+  log.push(trial(p4post, 'P-0042', complete([3300, 3500, 3700, 4000, 4300]), oldPost(16)))
+  log.push(trial(p4post, 'P-0043', complete([2300, 2400, 2500, 2600, 2700]), oldPost(22)))
+  log.push(trial(p4post, 'P-0044', complete([3700, 3900, 4200, 4500, 4800]), oldPost(28)))
+  log.push(trial(p4post, 'P-0045', complete([2600, 2700, 2800, 2900, 3100]), oldPost(34)))
+  log.push(trial(p4post, 'P-0046', incomplete([4200, 4500, 4900]), oldPost(40)))
+  log.push(trial(p4post, 'P-0047', complete([3000, 3200, 3300, 3500, 3800]), oldPost(46)))
+  log.push(trial(p4post, 'P-0048', complete([3300, 3400, 3600, 3800, 4100]), oldPost(52)))
+  // P-0049 absent at the 後測 — no record, and the sheet says 未記錄.
+  log.push(trial(p4post, 'P-0050', unable, oldPost(58)))
+
   return log
 }
 
@@ -274,16 +413,20 @@ export class FixtureDataSource implements SessionDataSource {
   private recordHandlers = new Set<() => void>()
   private live: LiveTrial | null = null
   private trialSeq = 0
-  private enrolled: Participant[] = [...ENROLLED]
-  private enrolSeq = 55
-  private sessions: AssessmentSession[] = [SESSION_PRE, SESSION_POST]
-  private block: Block = BLOCK
+  private enrolled: Map<SiteId, Participant[]> = new Map([
+    ['SITE-01', [...ENROLLED_01]],
+    ['SITE-02', [...ENROLLED_02]],
+  ])
+  /** Above every seeded id, so a newly enrolled person can never collide. */
+  private enrolSeq = 72
+  private sessions: AssessmentSession[] = [...SESSIONS]
+  private blocks: Block[] = [...BLOCKS]
 
   /** Selected by the scenario switcher. Drives the next live trial. */
   nextScript: TrialScript = 'complete_typical'
 
-  async getBlock(): Promise<Block> {
-    return this.block
+  async getBlocks(): Promise<readonly Block[]> {
+    return this.blocks
   }
 
   async getSessions(): Promise<readonly AssessmentSession[]> {
@@ -294,56 +437,122 @@ export class FixtureDataSource implements SessionDataSource {
     return SITES
   }
 
-  async getEnrolment(_siteId: SiteId): Promise<readonly Participant[]> {
-    return this.enrolled
+  async getEnrolment(siteId: SiteId): Promise<readonly Participant[]> {
+    return this.enrolled.get(siteId) ?? []
   }
 
   /**
    * The STORE assigns the pseudonymous id. Staff supply a display label and
    * nothing else — there is no name parameter, by invariant 2.
    */
-  async enrolParticipant(_siteId: SiteId, label: string): Promise<Participant> {
+  async enrolParticipant(siteId: SiteId, label: string): Promise<Participant> {
     const p: Participant = {
       id: `P-${(++this.enrolSeq).toString().padStart(4, '0')}`,
       label: label.trim(),
     }
-    this.enrolled = [...this.enrolled, p]
+    this.enrolled.set(siteId, [...(this.enrolled.get(siteId) ?? []), p])
     this.announceRecords()
     return p
   }
 
   /**
-   * Open the configured session.
+   * Open, resume, or reopen the configured session.
    *
-   * Re-opening an existing phase KEEPS its records: the log is append-only, and
-   * a setup screen that silently discarded a morning's measurements because
-   * someone revisited it would be the worst possible bug in this product. Only
-   * the attendee list and the 期 labelling are replaced.
+   * ONE SESSION PER (據點, 年度, 期, 階段). A second 後測 in the same 期 would be
+   * precisely the ambiguity the whole feature exists to remove, so revisiting
+   * setup with the same four values resumes rather than forks — and reopens the
+   * session if it had been ended.
+   *
+   * Records are NEVER discarded here: the log is append-only, and a setup screen
+   * that silently dropped a morning's measurements because someone revisited it
+   * would be the worst possible bug in this product. Enrolment in the 期 only
+   * grows, for the same reason — removing someone from the 期 would orphan the
+   * records she already has.
    */
   async openSession(setup: SessionSetup): Promise<AssessmentSession> {
     const site = SITES.find((s) => s.siteId === setup.siteId) ?? SITES[0]!
-    const blockName = `${setup.year} 年度第 ${setup.cycle} 期`
-    const attendees = this.enrolled.filter((p) => setup.attendeeIds.includes(p.id))
+    const roster = this.enrolled.get(site.siteId) ?? []
+    const attendees = pick(roster, setup.attendeeIds)
 
-    this.block = {
-      ...this.block,
-      siteId: site.siteId,
-      siteName: site.name,
-      blockName,
-      participants: attendees,
+    let block = this.blocks.find(
+      (b) => b.siteId === site.siteId && b.year === setup.year && b.cycle === setup.cycle,
+    )
+
+    if (!block) {
+      block = {
+        blockId: `B-${site.siteId}-${setup.year}-${setup.cycle}`,
+        siteId: site.siteId,
+        siteName: site.name,
+        blockName: `${setup.year} 年度第 ${setup.cycle} 期`,
+        year: setup.year,
+        cycle: setup.cycle,
+        startedIso: today(),
+        participants: attendees,
+      }
+      this.blocks = [...this.blocks, block]
+    } else {
+      const known = new Set(block.participants.map((p) => p.id))
+      const added = attendees.filter((p) => !known.has(p.id))
+      if (added.length > 0) {
+        const grown: Block = { ...block, participants: [...block.participants, ...added] }
+        this.blocks = this.blocks.map((b) => (b.blockId === grown.blockId ? grown : b))
+        block = grown
+      }
     }
 
-    const existing = this.sessions.find((s) => s.phase === setup.phase)
-    const updated: AssessmentSession = {
-      sessionId: existing?.sessionId ?? `S-${setup.phase}`,
-      blockId: this.block.blockId,
-      phase: setup.phase,
-      dateIso: existing?.dateIso ?? new Date().toISOString().slice(0, 10),
-      attendeeIds: setup.attendeeIds,
-    }
-    this.sessions = this.sessions.map((s) => (s.phase === setup.phase ? updated : s))
+    const existing = this.sessions.find(
+      (s) => s.blockId === block!.blockId && s.phase === setup.phase,
+    )
+    const updated: AssessmentSession = existing
+      ? { ...existing, status: 'open', attendeeIds: setup.attendeeIds }
+      : {
+          sessionId: `S-${block.blockId}-${setup.phase}`,
+          blockId: block.blockId,
+          phase: setup.phase,
+          dateIso: today(),
+          status: 'open',
+          attendeeIds: setup.attendeeIds,
+        }
+
+    this.sessions = existing
+      ? this.sessions.map((s) => (s.sessionId === updated.sessionId ? updated : s))
+      : [...this.sessions, updated]
     this.announceRecords()
     return updated
+  }
+
+  async completeSession(sessionId: SessionId): Promise<AssessmentSession> {
+    return this.setStatus(sessionId, 'completed')
+  }
+
+  async reopenSession(sessionId: SessionId): Promise<AssessmentSession> {
+    return this.setStatus(sessionId, 'open')
+  }
+
+  private setStatus(sessionId: SessionId, status: 'open' | 'completed'): AssessmentSession {
+    const found = this.sessions.find((s) => s.sessionId === sessionId)
+    if (!found) throw new Error(`unknown session ${sessionId}`)
+    const updated: AssessmentSession = { ...found, status }
+    this.sessions = this.sessions.map((s) => (s.sessionId === sessionId ? updated : s))
+    this.announceRecords()
+    return updated
+  }
+
+  /**
+   * The write guard.
+   *
+   * Every path that appends to the log goes through here. The UI refuses first
+   * and says why — see `trialGate` — but a refusal that lives only in a
+   * component is one careless call site away from being gone.
+   */
+  private assertWritable(sessionId: SessionId, participantId?: ParticipantId): AssessmentSession {
+    const session = this.sessions.find((s) => s.sessionId === sessionId)
+    if (!session) throw new Error(`unknown session ${sessionId}`)
+    if (session.status !== 'open') throw new Error(`session ${sessionId} is completed`)
+    if (participantId !== undefined && !session.attendeeIds.includes(participantId)) {
+      throw new Error(`${participantId} is not an attendee of ${sessionId}`)
+    }
+    return session
   }
 
   async getRecords(sessionId: SessionId): Promise<readonly AnyRecord[]> {
@@ -385,6 +594,7 @@ export class FixtureDataSource implements SessionDataSource {
   }
 
   async startTrial(sessionId: SessionId, participantId: ParticipantId): Promise<TrialId> {
+    this.assertWritable(sessionId, participantId)
     this.clearLive()
     const trialId = `T-${++this.trialSeq}`
     const script = this.nextScript
@@ -530,6 +740,7 @@ export class FixtureDataSource implements SessionDataSource {
   }
 
   async markUnable(sessionId: SessionId, participantId: ParticipantId): Promise<Outcome> {
+    this.assertWritable(sessionId, participantId)
     const outcome: Outcome = { kind: 'unable' }
     this.append({
       recordId: nextRecordId(),
@@ -550,6 +761,9 @@ export class FixtureDataSource implements SessionDataSource {
     outcome: Outcome
     note: CorrectionNote
   }): Promise<void> {
+    // Correcting is writing. A finished 場次 has to be reopened first, which is
+    // one deliberate act away and visible when it happens.
+    this.assertWritable(input.sessionId, input.participantId)
     this.append({
       recordId: nextRecordId(),
       kind: 'correction',
@@ -587,3 +801,5 @@ export class FixtureDataSource implements SessionDataSource {
     this.live = null
   }
 }
+
+const today = () => new Date().toISOString().slice(0, 10)

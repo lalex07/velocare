@@ -2,34 +2,48 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppHeader, type Crumb } from './components/AppHeader'
 import { DemoBadge } from './components/DemoDisclosure'
 import { RailButton } from './components/RailButton'
+import { Refusal } from './components/Refusal'
 import { ScenarioSwitcher, type ScenarioActions } from './components/ScenarioSwitcher'
+import { SessionBand, describeSession } from './components/SessionBand'
 import { useDataSource } from './data/context'
 import type { FixtureDataSource, TrialScript } from './data/fixtures'
 import { currentTrialFor } from './domain/records'
+import {
+  attendeesOf,
+  blockOf,
+  identityOf,
+  listOrder,
+  sessionsOfBlock,
+  trialGate,
+} from './domain/sessions'
 import type {
+  AssessmentSession,
   CorrectionNote,
   Outcome,
   Participant,
   ParticipantId,
-  Phase,
+  SessionId,
   SessionSetup,
 } from './domain/types'
-import { useSession } from './hooks/useSession'
+import { useSessions } from './hooks/useSession'
 import { strings } from './i18n/strings'
 import { ParticipantDetail } from './surfaces/ParticipantDetail'
 import { Result } from './surfaces/Result'
 import { Roster } from './surfaces/Roster'
+import { SessionList } from './surfaces/SessionList'
 import { Setup } from './surfaces/Setup'
 import { Sheet } from './surfaces/Sheet'
 import { Trial } from './surfaces/Trial'
 import { CorrectionDialog } from './surfaces/dialogs/CorrectionDialog'
+import { SessionStatusDialog } from './surfaces/dialogs/SessionStatusDialog'
 
 /**
  * The surfaces nest, and the header renders that nesting as a path:
  *
- *   setup ──► roster ──┬──► trial ──► result ──► detail
- *                      ├──► detail
- *                      └──► sheet
+ *   場次 ──┬──► 新增場次
+ *          └──► roster ──┬──► trial ──► result ──► detail
+ *                        ├──► detail
+ *                        └──► sheet
  *
  * `result` is the post-trial surface: this person's time, and move on. It is
  * deliberately NOT `detail` — see the dignity constraint in Result.tsx.
@@ -37,8 +51,21 @@ import { CorrectionDialog } from './surfaces/dialogs/CorrectionDialog'
  * `back` is therefore structural — the level above — rather than a visit
  * history. Someone who reaches 紀錄 from a finished trial goes UP to the
  * roster, not back into the trial they just completed.
+ *
+ * ── THE ACTIVE SESSION ──────────────────────────────────────────────────────
+ *
+ * Several 場次 are open on one device at once, so there is no implicit current
+ * session and nothing here infers one. `activeSessionId` is set by exactly ONE
+ * action — choosing a row on the session list — and every surface below the
+ * roster reads it back through the context band. Navigating never changes it;
+ * `switchedTo` makes it visible on the few occasions it does change.
+ *
+ * When the id no longer resolves — a session that vanished, a 期 that did not
+ * load — the app falls back to the list rather than to a guess. See the
+ * `trialGate` header comment for why that posture is the point.
  */
 type View =
+  | { kind: 'sessions' }
   | { kind: 'setup' }
   | { kind: 'roster' }
   | { kind: 'trial'; participantId: ParticipantId }
@@ -48,25 +75,41 @@ type View =
   | { kind: 'detail'; participantId: ParticipantId }
   | { kind: 'sheet' }
 
+/** How long the "you just switched" line stays up. Long enough to read aloud. */
+const SWITCH_NOTICE_MS = 8000
+
 export function App() {
   const src = useDataSource()
-  const [phase, setPhase] = useState<Phase>('post')
-  const [view, setView] = useState<View>({ kind: 'setup' })
+  const [activeSessionId, setActiveSessionId] = useState<SessionId | null>(null)
+  const [view, setView] = useState<View>({ kind: 'sessions' })
   const [scenarioOpen, setScenarioOpen] = useState(false)
   const [correcting, setCorrecting] = useState(false)
+  const [statusDialog, setStatusDialog] = useState<'end' | 'reopen' | null>(null)
+  /* The session whose switch has not been announced yet — an ID, not a label.
+     A newly created 場次 is activated before its 期 has finished loading, so
+     resolving the name at activation time produced no announcement at all for
+     exactly the case where one matters most. Resolved at render instead. */
+  const [announcing, setAnnouncing] = useState<SessionId | null>(null)
 
-  const { block, sessions, active, resolved, allResolved, refresh } = useSession(phase)
+  const { blocks, sessions, allResolved, loaded } = useSessions()
 
   // The scenario switcher needs the fixture-only `nextScript` knob. Narrowed
   // here rather than widening SessionDataSource, so the October implementation
   // is not obliged to grow a demo affordance.
   const fixture = src as unknown as Partial<FixtureDataSource>
 
+  const active = sessions.find((s) => s.sessionId === activeSessionId) ?? null
+  const block = blockOf(blocks, active)
+  const resolved = (active && allResolved.get(active.sessionId)) ?? []
+  const attendees = attendeesOf(active, block)
+  const blockSessions = block ? sessionsOfBlock(sessions, block.blockId) : []
+  const gate = trialGate(active, block)
+
   const participantsById = useMemo(() => {
     const m = new Map<ParticipantId, Participant>()
-    for (const p of block?.participants ?? []) m.set(p.id, p)
+    for (const p of attendees) m.set(p.id, p)
     return m
-  }, [block])
+  }, [attendees])
 
   // Scenario switcher: S toggles. Ignored while typing in a field.
   useEffect(() => {
@@ -79,12 +122,29 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  /* If the active session stops resolving, fall back to the list. Never to a
+     substitute session: "close enough" is how a trial ends up in the wrong 期. */
+  useEffect(() => {
+    if (!loaded) return
+    if (view.kind === 'sessions' || view.kind === 'setup') return
+    if (!active || !block) {
+      setActiveSessionId(null)
+      setView({ kind: 'sessions' })
+    }
+  }, [loaded, view.kind, active, block])
+
+  useEffect(() => {
+    if (!announcing) return
+    const t = window.setTimeout(() => setAnnouncing(null), SWITCH_NOTICE_MS)
+    return () => window.clearTimeout(t)
+  }, [announcing])
+
   const firstOutstanding = useCallback((): Participant | null => {
-    for (const p of block?.participants ?? []) {
+    for (const p of attendees) {
       if (currentTrialFor(resolved, p.id) === null) return p
     }
-    return block?.participants[0] ?? null
-  }, [block, resolved])
+    return attendees[0] ?? null
+  }, [attendees, resolved])
 
   /**
    * The next person still to be measured, skipping the one just finished.
@@ -95,24 +155,61 @@ export function App() {
    */
   const nextOutstanding = useCallback(
     (afterId: ParticipantId): Participant | null => {
-      for (const p of block?.participants ?? []) {
+      for (const p of attendees) {
         if (p.id !== afterId && currentTrialFor(resolved, p.id) === null) return p
       }
       return null
     },
-    [block, resolved],
+    [attendees, resolved],
   )
 
-  const actions: ScenarioActions = {
-    gotoRoster: (p) => {
-      setPhase(p)
-      setView({ kind: 'roster' })
+  /**
+   * The ONE place the active session changes.
+   *
+   * Deliberate by construction: it is only ever called from a row on the
+   * session list or from the setup screen's begin button, never from a
+   * navigation. It marks the change for announcement whenever it is a real
+   * change, so the context band says so out loud rather than quietly showing
+   * different words.
+   */
+  const activate = useCallback(
+    (session: AssessmentSession, next: View) => {
+      if (session.sessionId !== activeSessionId) setAnnouncing(session.sessionId)
+      setActiveSessionId(session.sessionId)
+      setView(next)
     },
-    gotoSheet: () => setView({ kind: 'sheet' }),
+    [activeSessionId],
+  )
+
+  /* Resolved here, not at activation: a session created a moment ago is active
+     before `blocks` has reloaded, and naming it then yielded nothing. */
+  const switchedTo =
+    announcing && active && block && active.sessionId === announcing
+      ? describeSession(identityOf(active, block))
+      : null
+
+  const goSessions = () => setView({ kind: 'sessions' })
+  const goRoster = () => setView({ kind: 'roster' })
+
+  const actions: ScenarioActions = {
+    gotoSessions: goSessions,
+    gotoSession: (id) => {
+      const s = sessions.find((x) => x.sessionId === id)
+      if (s) activate(s, { kind: 'roster' })
+    },
+    openSessions: listOrder(sessions).map((s) => {
+      const b = blockOf(blocks, s)
+      return {
+        sessionId: s.sessionId,
+        label: b ? describeSession(identityOf(s, b)) : s.sessionId,
+        status: s.status,
+      }
+    }),
+    gotoSheet: () => active && setView({ kind: 'sheet' }),
     runTrial: (script: TrialScript) => {
       if (fixture.nextScript !== undefined) fixture.nextScript = script
       const p = firstOutstanding()
-      if (p) setView({ kind: 'trial', participantId: p.id })
+      if (p && gate.ok) setView({ kind: 'trial', participantId: p.id })
     },
     showResult: () => {
       const p = firstOutstanding()
@@ -121,10 +218,23 @@ export function App() {
   }
 
   async function beginSession(setup: SessionSetup) {
-    await src.openSession(setup)
-    setPhase(setup.phase)
-    refresh()
-    setView({ kind: 'roster' })
+    const opened = await src.openSession(setup)
+    activate(opened, { kind: 'roster' })
+  }
+
+  async function endSession() {
+    setStatusDialog(null)
+    if (!active) return
+    await src.completeSession(active.sessionId)
+    // Back to the list, not into a read-only roster: ending a 場次 is the end of
+    // a piece of work, and the next thing anyone does is pick the next one.
+    setView({ kind: 'sessions' })
+  }
+
+  async function reopenSession() {
+    setStatusDialog(null)
+    if (!active) return
+    await src.reopenSession(active.sessionId)
   }
 
   const current =
@@ -133,15 +243,18 @@ export function App() {
       : undefined
   const currentTrial = current ? currentTrialFor(resolved, current.id) : null
 
-  const goSetup = () => setView({ kind: 'setup' })
-  const goRoster = () => setView({ kind: 'roster' })
-
   /* The path to the current surface. Root first, current last; the last entry
      has no `go`, which is what marks it as current and makes it the <h1>. */
   const trail: Crumb[] = [
-    { title: strings.nav.placeSetup, icon: 'roster', go: view.kind === 'setup' ? undefined : goSetup },
+    {
+      title: strings.nav.placeSessions,
+      icon: 'roster',
+      go: view.kind === 'sessions' ? undefined : goSessions,
+    },
   ]
-  if (view.kind !== 'setup') {
+  if (view.kind === 'setup') {
+    trail.push({ title: strings.nav.placeSetup, icon: 'roster' })
+  } else if (view.kind !== 'sessions') {
     trail.push({
       title: strings.nav.placeRoster,
       icon: 'roster',
@@ -157,13 +270,10 @@ export function App() {
   } else if (view.kind === 'sheet') {
     trail.push({ title: strings.nav.placeSheet, icon: 'sheet' })
   }
-  // The setup screen has no phase yet — it is where phase gets chosen.
-  const phaseWord =
-    view.kind === 'setup' ? null : phase === 'pre' ? strings.phase.pre : strings.phase.post
 
   async function submitCorrection(outcome: Outcome, note: CorrectionNote) {
     setCorrecting(false)
-    if (!current || !currentTrial || !active) return
+    if (!current || !currentTrial || !active || !gate.ok) return
     await src.appendCorrection({
       sessionId: active.sessionId,
       participantId: current.id,
@@ -173,12 +283,14 @@ export function App() {
     })
   }
 
-  /* Two rows now, not three: the demo strip folded into the header. */
+  /* Header, then the session context band on every surface that has an active
+     session. The band replaces the header's old read-only phase chip: with
+     several 場次 open, 前測 alone is no longer enough to say where a number will
+     land. See SessionBand.tsx. */
   const shell = (body: React.ReactNode) => (
     <div className="app">
       <AppHeader
         trail={trail}
-        phaseWord={phaseWord}
         demoSlot={<DemoBadge simulated={src.isSimulated} />}
         scenarioSlot={
           <ScenarioSwitcher
@@ -189,13 +301,31 @@ export function App() {
           />
         }
       />
+      {active && block && view.kind !== 'sessions' && view.kind !== 'setup' && (
+        <SessionBand identity={identityOf(active, block)} switchedTo={switchedTo} />
+      )}
       {body}
     </div>
   )
 
+  if (view.kind === 'sessions') {
+    return shell(
+      <SessionList
+        blocks={blocks}
+        sessions={sessions}
+        allResolved={allResolved}
+        activeSessionId={activeSessionId}
+        onOpen={(s) => activate(s, { kind: 'roster' })}
+        onNew={() => setView({ kind: 'setup' })}
+      />,
+    )
+  }
+
   if (view.kind === 'setup') return shell(<Setup onBegin={(s) => void beginSession(s)} />)
 
-  if (!block || !active) return shell(<div className="field" />)
+  if (!active || !block) return shell(<div className="field" />)
+
+  const sessionName = describeSession(identityOf(active, block))
 
   return shell(
     <>
@@ -203,20 +333,35 @@ export function App() {
         <div className="zones">
           <div className="field">
             <Roster
-              block={block}
+              attendees={attendees}
               resolved={resolved}
+              gate={gate}
               onStart={(p) => setView({ kind: 'trial', participantId: p.id })}
               onReview={(p) => setView({ kind: 'detail', participantId: p.id })}
             />
           </div>
           <div className="rail">
+            {/* The 據點/期/階段 line lives in the band above, which every surface
+                carries. The rail keeps the count, which is this list's own. */}
             <div className="rail__context">
-              <span className="rail__context-id">{block.siteName}</span>
-              <span className="rail__context-label">{block.blockName}</span>
+              <span className="rail__context-id">{strings.session.contextLabel}</span>
+              <span className="rail__context-label">
+                {strings.session.attendeeCount(attendees.length)}
+              </span>
             </div>
             <div className="rail__spacer" />
             <div className="rail__actions">
-              {/* No phase toggle here any more. Phase is chosen once, on setup. */}
+              {/* Ending and reopening are the two acts that change whether this
+                  device will record. Both are confirmed; neither is a toggle. */}
+              {active.status === 'open' ? (
+                <RailButton variant="quiet" onClick={() => setStatusDialog('end')}>
+                  {strings.session.endAction}
+                </RailButton>
+              ) : (
+                <RailButton variant="quiet" onClick={() => setStatusDialog('reopen')}>
+                  {strings.session.reopenAction}
+                </RailButton>
+              )}
               <RailButton variant="primary" icon="sheet" onClick={() => setView({ kind: 'sheet' })}>
                 {strings.roster.openSheet}
               </RailButton>
@@ -229,9 +374,30 @@ export function App() {
         <Trial
           participant={current}
           session={active}
+          gate={trialGate(active, block, current.id)}
           onSettled={(outcome) => setView({ kind: 'result', participantId: current.id, outcome })}
           onBack={goRoster}
+          onSessions={goSessions}
         />
+      )}
+
+      {/* A participant who is no longer on this 場次 — switched away from mid-
+          rotation, or removed from the attendance list. The surface refuses
+          rather than rendering a trial with nowhere to put its result. */}
+      {(view.kind === 'trial' || view.kind === 'result' || view.kind === 'detail') && !current && (
+        <div className="zones">
+          <div className="field">
+            <Refusal
+              title={strings.session.refuseTitle}
+              body={strings.session.refuse.not_attending}
+              actions={
+                <RailButton variant="primary" icon="roster" onClick={goRoster}>
+                  {strings.nav.backToRoster}
+                </RailButton>
+              }
+            />
+          </div>
+        </div>
       )}
 
       {view.kind === 'result' && current && (
@@ -252,8 +418,9 @@ export function App() {
         <>
           <ParticipantDetail
             participant={current}
-            sessions={sessions}
+            sessions={blockSessions}
             allResolved={allResolved}
+            writable={gate.ok}
             onCorrect={() => setCorrecting(true)}
             onRemeasure={() => setView({ kind: 'trial', participantId: current.id })}
             onDone={goRoster}
@@ -270,8 +437,21 @@ export function App() {
       )}
 
       {view.kind === 'sheet' && (
-        <Sheet block={block} sessions={sessions} allResolved={allResolved} />
+        <Sheet
+          block={block}
+          sessions={blockSessions}
+          allResolved={allResolved}
+          generatedFrom={active}
+        />
       )}
+
+      <SessionStatusDialog
+        open={statusDialog !== null}
+        mode={statusDialog ?? 'end'}
+        sessionName={sessionName}
+        onCancel={() => setStatusDialog(null)}
+        onConfirm={() => void (statusDialog === 'end' ? endSession() : reopenSession())}
+      />
     </>,
   )
 }

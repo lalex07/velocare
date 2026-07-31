@@ -59,17 +59,35 @@ export interface Block {
   readonly blockId: BlockId
   readonly siteId: SiteId
   readonly siteName: string
+  /** Display form of `year` + `cycle`, e.g. `115 年度第 3 期`. */
   readonly blockName: string
+  /** 民國 year. Stored rather than parsed back out of `blockName`, because the
+      setup screen has to decide whether the 期 a facilitator just configured is
+      one that already exists — and a string comparison would be a guess. */
+  readonly year: number
+  /** 第 N 期. Max 3 per year per 特約服務點. */
+  readonly cycle: number
   readonly startedIso: string
   /** Everyone ENROLLED in the 期. A superset of any one session's attendees. */
   readonly participants: readonly Participant[]
 }
+
+/**
+ * A 場次 is either still being recorded into, or finished.
+ *
+ * Several 場次 are open on one device at the same time, so "which one am I
+ * recording into" is a real question with a wrong answer. `completed` is what
+ * lets the device refuse: a finished session takes no more trials until someone
+ * deliberately reopens it. See `trialGate` in domain/sessions.ts.
+ */
+export type SessionStatus = 'open' | 'completed'
 
 export interface AssessmentSession {
   readonly sessionId: SessionId
   readonly blockId: BlockId
   readonly phase: Phase
   readonly dateIso: string
+  readonly status: SessionStatus
   /** Who is present TODAY. Attendance varies session to session, and the
       funding floor is an average across the 期, so this is per-session data
       rather than a property of the 期. */

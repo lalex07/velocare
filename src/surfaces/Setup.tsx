@@ -1,11 +1,20 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   Session setup — the entry point, before the roster.
+   Session setup — where a 場次 is configured. Reached from the session list.
 
    Where a session is configured: 據點, 期 (year + cycle), phase, who is here
    today, and a camera framing check before anyone sits down. Phase is CHOSEN
    here rather than toggled mid-session, which is what the roster rail used to
    do — a control that silently changes which assessment point you are recording
    into does not belong beside the list you are recording from.
+
+   IT SAYS WHAT THE BUTTON WILL DO BEFORE IT IS PRESSED. There is exactly one
+   場次 per (據點, 年度, 期, 階段) — a second 後測 in the same 期 would be the
+   ambiguity this whole feature exists to remove — so configuring a combination
+   that already exists RESUMES it rather than forking it, and reopens it if it
+   had been ended. That is the right behaviour and the wrong thing to do
+   silently, so the notice and the button label both change: 開始本場 becomes
+   接續本場 or 重新開啟並開始, and the attendance list preloads from the 期 rather
+   than from the site's whole book.
 
    INVARIANT 2 — NO NAME FIELD, EVER. The add-participant form has exactly one
    text input and it collects a short display label. The pseudonymous id is
@@ -34,6 +43,8 @@ import { useDataSource } from '../data/context'
 import { useCameraPreview } from '../hooks/useCameraPreview'
 import {
   FUNDED_ATTENDANCE_MIN,
+  type AssessmentSession,
+  type Block,
   type Participant,
   type ParticipantId,
   type Phase,
@@ -51,6 +62,8 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
 
   const [sites, setSites] = useState<readonly Site[]>([])
   const [enrolled, setEnrolled] = useState<readonly Participant[]>([])
+  const [blocks, setBlocks] = useState<readonly Block[]>([])
+  const [sessions, setSessions] = useState<readonly AssessmentSession[]>([])
   const [siteId, setSiteId] = useState<string>('')
   const [year, setYear] = useState<number>(115)
   const [cycle, setCycle] = useState<number>(3)
@@ -61,24 +74,72 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
 
   useEffect(() => {
     void (async () => {
-      const ss = await src.getSites()
+      const [ss, bs, sess] = await Promise.all([src.getSites(), src.getBlocks(), src.getSessions()])
       setSites(ss)
-      const first = ss[0]?.siteId ?? ''
-      setSiteId(first)
-      const [people, block] = await Promise.all([src.getEnrolment(first), src.getBlock()])
-      setEnrolled(people)
-      // Preselect the people already in this 期, not everyone enrolled at the
-      // site. Enrolment is site-level and outlives any one 期; a facilitator
-      // unticking two absentees from today's class is less work than ticking
-      // twelve, and starting from the site's whole book would be wrong.
-      setAttendees(new Set(block.participants.map((p) => p.id)))
-      setYear(115)
-      setCycle(3)
+      setBlocks(bs)
+      setSessions(sess)
+      setSiteId(ss[0]?.siteId ?? '')
     })()
   }, [src])
 
+  // Enrolment is per-據點, so it reloads when the 據點 changes.
+  useEffect(() => {
+    if (!siteId) return
+    void (async () => setEnrolled(await src.getEnrolment(siteId)))()
+  }, [src, siteId])
+
+  /* Does the configured (據點, 年度, 期) already exist, and does it already have
+     a 場次 for this 階段? Both answers change what the primary button does, and
+     both are stated on screen before it is pressed. */
+  const existingBlock =
+    blocks.find((b) => b.siteId === siteId && b.year === year && b.cycle === cycle) ?? null
+  const existingSession =
+    (existingBlock &&
+      sessions.find((s) => s.blockId === existingBlock.blockId && s.phase === phase)) ||
+    null
+
+  /* Preselect the people already in this 期, not everyone enrolled at the site.
+     Enrolment is site-level and outlives any one 期; a facilitator unticking two
+     absentees from today's class is less work than ticking twelve. When the 場次
+     itself already exists, its OWN attendance is the better starting point —
+     attendance varies session to session and that list is the last thing
+     somebody at this 據點 confirmed. */
+  useEffect(() => {
+    if (existingSession) setAttendees(new Set(existingSession.attendeeIds))
+    else if (existingBlock) setAttendees(new Set(existingBlock.participants.map((p) => p.id)))
+    else setAttendees(new Set(enrolled.map((p) => p.id)))
+    // Keyed on identity rather than on the objects, so retyping the same
+    // combination does not stomp a selection the facilitator just adjusted.
+  }, [existingSession?.sessionId, existingBlock?.blockId, enrolled]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const count = attendees.size
   const sorted = useMemo(() => [...enrolled].sort((a, b) => a.id.localeCompare(b.id)), [enrolled])
+
+  const willReopen = existingSession?.status === 'completed'
+  const sessionNote = existingSession
+    ? existingBlock
+      ? willReopen
+        ? strings.session.willReopen(
+            strings.session.describe(
+              existingBlock.siteName,
+              existingBlock.blockName,
+              phase === 'pre' ? strings.phase.pre : strings.phase.post,
+            ),
+          )
+        : strings.session.willResume(
+            strings.session.describe(
+              existingBlock.siteName,
+              existingBlock.blockName,
+              phase === 'pre' ? strings.phase.pre : strings.phase.post,
+            ),
+          )
+      : null
+    : strings.session.willCreate
+  const beginWord = existingSession
+    ? willReopen
+      ? strings.session.beginReopen
+      : strings.session.beginResume
+    : strings.setup.begin
 
   function toggle(id: ParticipantId) {
     setAttendees((prev) => {
@@ -183,6 +244,16 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
                   ))}
                 </div>
               </fieldset>
+
+              {/* Said before the button is pressed, not discovered after. One
+                  場次 per (據點, 年度, 期, 階段), so this combination either
+                  resumes an existing one or creates a new one — and which of
+                  those it is, is exactly the thing a facilitator has to know. */}
+              {sessionNote && (
+                <p className="card__hint card__hint--note" role="status">
+                  {sessionNote}
+                </p>
+              )}
             </section>
 
             {/* ── Camera framing check ──────────────────────────────────── */}
@@ -295,7 +366,7 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
               onBegin({ siteId, year, cycle, phase, attendeeIds: [...attendees] })
             }
           >
-            {strings.setup.begin}
+            {beginWord}
           </RailButton>
         </div>
       </div>

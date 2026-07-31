@@ -6,27 +6,44 @@
    likely route to facilitator veto and a real dignity harm. Status only. Numbers
    live on the result surface (one participant at a time) and on the sheet (read
    alone by the site lead).
+
+   THE ROWS ARE THE SESSION'S ATTENDEES, NOT THE 期'S ROSTER. Enrolment in a 期
+   outlives any one 場次 and attendance varies session to session, so with
+   several sessions per 期 the two lists are no longer the same list. Deriving
+   the roster from `attendeeIds` is what stops the afternoon's 前測 from
+   inheriting the morning's 後測 attendance.
+
+   WHEN THE SESSION IS FINISHED THE ROSTER IS READ-ONLY. Not disabled buttons
+   twelve times over — a single sentence at the top saying so, and no 開始量測
+   control at all. Rows that already have a record keep 查看紀錄, because reading
+   a finished session is exactly what a finished session is for.
    ───────────────────────────────────────────────────────────────────────────── */
 
 import { RailButton } from '../components/RailButton'
+import { Refusal } from '../components/Refusal'
 import { StateChip } from '../components/StateChip'
 import { awaitingDisplay, outcomeDisplay } from '../domain/display'
 import { currentTrialFor, type ResolvedTrial } from '../domain/records'
-import type { Block, Participant } from '../domain/types'
+import type { TrialGate } from '../domain/sessions'
+import type { Participant } from '../domain/types'
 import { strings } from '../i18n/strings'
 
 export function Roster({
-  block,
+  attendees,
   resolved,
+  gate,
   onStart,
   onReview,
 }: {
-  block: Block
+  /** Who is on THIS 場次, in 期 roster order. */
+  attendees: readonly Participant[]
   resolved: readonly ResolvedTrial[]
+  /** Whether this session will accept a trial at all. See domain/sessions.ts. */
+  gate: TrialGate
   onStart: (p: Participant) => void
   onReview: (p: Participant, trial: ResolvedTrial) => void
 }) {
-  const rows = block.participants.map((p) => ({
+  const rows = attendees.map((p) => ({
     participant: p,
     trial: currentTrialFor(resolved, p.id),
   }))
@@ -42,14 +59,21 @@ export function Roster({
 
   return (
     <div className="roster">
-      {/* The title and the phase chip live in the app header, which is the
-          single place that answers "where am I". */}
+      {/* 據點 / 期別 / 階段 are in the session band above, which is the one place
+          that answers "which 場次 am I recording into". This line carries only
+          what is specific to the list beneath it. */}
       <div className="roster__meta">
-        <span>{block.siteName}</span>
-        <span>{block.blockName}</span>
-        <span>{strings.roster.progress(doneCount, block.participants.length)}</span>
-        <span>{strings.roster.attendanceNote(block.participants.length)}</span>
+        <span>{strings.roster.progress(doneCount, rows.length)}</span>
+        <span>{strings.roster.attendanceNote(rows.length)}</span>
       </div>
+
+      {/* Said once, above the list, rather than twelve times inside it. */}
+      {!gate.ok && gate.reason === 'completed' && (
+        <p className="roster__readonly">{strings.session.readOnlyNote}</p>
+      )}
+      {!gate.ok && gate.reason !== 'completed' && (
+        <Refusal title={strings.session.refuseTitle} body={strings.session.refuse[gate.reason]} />
+      )}
 
       {rows.length === 0 ? (
         <div className="cue">
@@ -86,7 +110,7 @@ export function Roster({
                         >
                           {strings.roster.review}
                         </RailButton>
-                      ) : (
+                      ) : gate.ok ? (
                         <RailButton
                           icon="start"
                           ariaLabel={strings.roster.startFor(participant.label)}
@@ -94,6 +118,13 @@ export function Roster({
                         >
                           {strings.roster.start}
                         </RailButton>
+                      ) : (
+                        /* No control, rather than a dead one. The reason is
+                           stated once above; a greyed button twelve times over
+                           says nothing and invites a twelfth press. */
+                        <span className="rgrid__none" aria-hidden="true">
+                          —
+                        </span>
                       )}
                     </span>
                   </li>

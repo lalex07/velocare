@@ -11,12 +11,20 @@
    sheet reports measured times to a human. It does not apply the 14-second ICOPE
    threshold, does not grade, and states no determination. There is deliberately
    no pass/fail column and no highlighted row.
+
+   IT SAYS WHICH 期 AND WHICH 場次 IT COVERS, ON PAPER. With several 場次 open on
+   one device, "前後測時間紀錄表" is no longer enough to identify what is in front
+   of you: two sheets from the same morning can carry different 期 and look
+   identical. So the head names the 期, both 場次 with their dates and attendance,
+   and which 場次 the sheet was produced from. A 據點負責人 filing this with a
+   成果報告 can check it against their paper register without asking anyone.
    ───────────────────────────────────────────────────────────────────────────── */
 
 import { useDataSource } from '../data/context'
 import { rocDate, rocToday } from '../domain/dates'
 import { awaitingDisplay, outcomeDisplay } from '../domain/display'
 import { currentTrialFor, type ResolvedTrial } from '../domain/records'
+import { attendeesOf } from '../domain/sessions'
 import {
   elapsedMsOf,
   formatSeconds,
@@ -25,6 +33,7 @@ import {
   repsOf,
   type AssessmentSession,
   type Block,
+  type Phase,
   type SessionId,
 } from '../domain/types'
 import { strings } from '../i18n/strings'
@@ -35,16 +44,29 @@ export function Sheet({
   block,
   sessions,
   allResolved,
+  generatedFrom,
 }: {
   block: Block
+  /** The 場次 of THIS 期 only. A sheet spanning several 期 would be unfileable. */
   sessions: readonly AssessmentSession[]
   allResolved: ReadonlyMap<SessionId, readonly ResolvedTrial[]>
+  /** The 場次 the facilitator pressed 產生報表 from. Named on the sheet. */
+  generatedFrom: AssessmentSession
 }) {
   const src = useDataSource()
   const pre = sessions.find((s) => s.phase === 'pre') ?? null
   const post = sessions.find((s) => s.phase === 'post') ?? null
   const preTrials = (pre && allResolved.get(pre.sessionId)) ?? []
   const postTrials = (post && allResolved.get(post.sessionId)) ?? []
+
+  const phaseWord = (p: Phase) => (p === 'pre' ? strings.phase.pre : strings.phase.post)
+  /* One line per 階段: was it held, when, and how many people were on it. A
+     blank cell in the table below is then attributable — absent from that
+     session, rather than missing data of unknown provenance. */
+  const coverageOf = (s: AssessmentSession | null, phase: Phase) =>
+    s === null
+      ? strings.sheet.coverageNotHeld(phaseWord(phase))
+      : strings.sheet.coveragePhase(phaseWord(phase), rocDate(s.dateIso), attendeesOf(s, block).length)
 
   const rows = block.participants.map((p) => {
     const a = currentTrialFor(preTrials, p.id)
@@ -103,21 +125,31 @@ export function Sheet({
                 <span className="sheet__meta-label">{strings.sheet.block}</span>
                 <span className="sheet__meta-value">{block.blockName}</span>
               </span>
-              {pre && (
-                <span className="sheet__meta-item">
-                  <span className="sheet__meta-label">{strings.phase.pre}</span>
-                  <span className="sheet__meta-value">{rocDate(pre.dateIso)}</span>
-                </span>
-              )}
-              {post && (
-                <span className="sheet__meta-item">
-                  <span className="sheet__meta-label">{strings.phase.post}</span>
-                  <span className="sheet__meta-value">{rocDate(post.dateIso)}</span>
-                </span>
-              )}
               <span className="sheet__meta-item">
                 <span className="sheet__meta-label">{strings.sheet.printedOn}</span>
                 <span className="sheet__meta-value">{rocToday()}</span>
+              </span>
+            </div>
+
+            {/* Which 場次 this sheet covers, and which one it came from. Both on
+                paper: a report that only a screen can identify is not a report. */}
+            <div className="sheet__coverage">
+              <span className="sheet__meta-item">
+                <span className="sheet__meta-label">{strings.sheet.coverage}</span>
+                <span className="sheet__meta-value">
+                  {coverageOf(pre, 'pre')}
+                  {'　'}
+                  {coverageOf(post, 'post')}
+                </span>
+              </span>
+              <span className="sheet__meta-item">
+                <span className="sheet__meta-label">{strings.sheet.generatedFrom}</span>
+                <span className="sheet__meta-value">
+                  {strings.sheet.generatedFromValue(
+                    phaseWord(generatedFrom.phase),
+                    rocDate(generatedFrom.dateIso),
+                  )}
+                </span>
               </span>
             </div>
           </header>

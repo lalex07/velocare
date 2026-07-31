@@ -177,6 +177,19 @@ export interface Strings {
     /* 據點 creation. The appliance is installed somewhere real and staff name
        it; the list is not handed down from anywhere. */
     readonly noSites: string
+    /* Refusals, in the product's standard form: a sentence naming the reason
+       and a control that goes to the fix. Never a greyed-out button. */
+    readonly refuseTitle: string
+    readonly refuse: {
+      readonly no_site: string
+      readonly no_enrolment: string
+      readonly no_attendees: string
+    }
+    readonly refuseGoto: {
+      readonly no_site: string
+      readonly no_enrolment: string
+      readonly no_attendees: string
+    }
     readonly addSiteTitle: string
     readonly addSiteLabel: string
     readonly addSiteHint: string
@@ -586,6 +599,17 @@ const zhTW: Strings = {
     attendeesHint: '勾選今天到場的長輩。未到場者仍在收案名單內。',
     noEnrolment: '本據點尚無收案名單。請於下方新增長輩後，再勾選今天到場的人。',
     noSites: '尚未建立任何據點。請先於下方新增本機所在的據點名稱。',
+    refuseTitle: '尚未完成場次設定',
+    refuse: {
+      no_site: '尚未建立任何據點。場次必須記錄在某一個據點之下，請先新增本機所在的據點名稱。',
+      no_enrolment: '本據點尚無收案名單。請先新增長輩，再勾選今天到場的人。',
+      no_attendees: '尚未勾選任何到場的長輩。請於出席名單中勾選今天到場的人。',
+    },
+    refuseGoto: {
+      no_site: '前往新增據點',
+      no_enrolment: '前往新增長輩',
+      no_attendees: '前往勾選名單',
+    },
     addSiteTitle: '新增據點',
     addSiteLabel: '據點名稱',
     addSiteHint: '本機所在的服務據點名稱，會顯示於畫面與報表上。',

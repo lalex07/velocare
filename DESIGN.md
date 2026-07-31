@@ -833,6 +833,54 @@ first attempt gave the notice its own bordered block, which cost 12.7 mm and
 produced a two-page sheet; folding it into the existing metadata block — the box
 grows to contain both — costs a single line.
 
+## Refusing, not disabling — the rule, and where it applies
+
+The product refuses in several places: 不可比較 on the sheet, `trialGate` on the
+roster and the trial screen, and now the setup screen. Every one takes the same
+form.
+
+**A refusal is a sentence naming the reason plus a control that goes to the fix.
+Never a greyed-out button.** A disabled control tells a standing part-time worker
+that something is wrong and nothing about what to do, and the thing they will do
+next is press it again.
+
+**The primary action is never disabled.** Pressing it while something is missing
+scrolls the reason into view and moves focus to the control that fixes it, so a
+press always does something.
+
+**A refusal is never styled as an error.** `--alert` is reserved for the machine
+failing; a setup screen waiting for a 據點 name is the machine working correctly.
+Verified: no part of the refusal — ground, border, title, mark — resolves to
+`--alert`.
+
+Setup was the last surface holding the old pattern, on
+`disabled={count === 0 || sites.length === 0}`, and it is the FIRST surface
+anyone sees. It now names three states — no 據點, nobody enrolled, nobody ticked
+— each with a control that focuses the field or list that resolves it.
+
+### The one place `disabled` is still right
+
+An **add** button beside its own empty text field. The distinction is where the
+reason lives: a refusal must supply a route when the reason is somewhere else,
+which is why 開始本場 is never disabled. For 新增據點 the reason is the empty box
+directly above the button, already focused — the control *is* the route, and
+there is nothing a sentence could add. Stated in the code at both call sites, so
+it reads as a drawn line rather than as an oversight, and does not become a
+licence.
+
+### What does NOT gate anything
+
+The **funding floor**. Below an average of ten per 期 a site loses the entire
+NT$36,000, so the number matters — but it is the 據點's number, not the device's
+business. `FUNDED_ATTENDANCE_MIN` renders as a count in the rail beside the
+threshold it is measured against and gates nothing, here or anywhere.
+
+Verified rather than asserted: a 場次 with **five attendees against a floor of
+ten** starts normally and records five attendees. No refusal appears, no warning,
+no colour. The device reports; the site decides. Compare the 14-second ICOPE
+threshold, which this build refuses to apply at all — that one is clinical, so it
+is absent entirely rather than merely unstyled.
+
 ## Session setup
 
 Reached from the session list, not the entry point any more. Where 據點, 期 (year

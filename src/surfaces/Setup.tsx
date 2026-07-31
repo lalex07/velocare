@@ -34,11 +34,12 @@
    in without a change here.
    ───────────────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CameraControls } from '../components/CameraControls'
 import { DemoNotice } from '../components/DemoDisclosure'
 import { CameraSelfView } from '../components/CameraSelfView'
 import { RailButton } from '../components/RailButton'
+import { Refusal } from '../components/Refusal'
 import { useDataSource } from '../data/context'
 import { useCameraPreview } from '../hooks/useCameraPreview'
 import {
@@ -80,6 +81,15 @@ export function Setup({
   const [cycle, setCycle] = useState<number>(1)
   const [newSite, setNewSite] = useState('')
   const [siteAdded, setSiteAdded] = useState<string | null>(null)
+  /* Set when 開始本場 is pressed while something is missing. The refusal is
+     always visible in the relevant card; this is what scrolls it into view and
+     moves focus, so pressing the primary action never does nothing. */
+  const [pressed, setPressed] = useState(false)
+  const siteInputRef = useRef<HTMLInputElement>(null)
+  const labelInputRef = useRef<HTMLInputElement>(null)
+  const picksRef = useRef<HTMLUListElement>(null)
+  /** Set once the facilitator adjusts the attendance list by hand. */
+  const touched = useRef(false)
   const [phase, setPhase] = useState<Phase>('post')
   const [attendees, setAttendees] = useState<ReadonlySet<ParticipantId>>(new Set())
   const [newLabel, setNewLabel] = useState('')
@@ -120,13 +130,74 @@ export function Setup({
   useEffect(() => {
     if (existingSession) setAttendees(new Set(existingSession.attendeeIds))
     else if (existingBlock) setAttendees(new Set(existingBlock.participants.map((p) => p.id)))
-    else setAttendees(new Set(enrolled.map((p) => p.id)))
+    // `touched` guards the last branch only. Without it, enrolling somebody
+    // re-selected EVERYONE — so a facilitator who unticked two absentees and
+    // then added a newcomer silently got the absentees back, and the attendance
+    // list is the thing the whole 場次 is recorded against. `add()` ticks the
+    // person it just created, which is the only auto-selection that should
+    // survive a manual adjustment.
+    else if (!touched.current) setAttendees(new Set(enrolled.map((p) => p.id)))
     // Keyed on identity rather than on the objects, so retyping the same
     // combination does not stomp a selection the facilitator just adjusted.
   }, [existingSession?.sessionId, existingBlock?.blockId, enrolled]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const count = attendees.size
   const sorted = useMemo(() => [...enrolled].sort((a, b) => a.id.localeCompare(b.id)), [enrolled])
+
+  /* WHAT IS MISSING, AS A REASON — never as a disabled button.
+     `Trial.tsx` and `Roster.tsx` both refuse the greyed-control pattern on the
+     grounds that it tells a standing part-time worker that something is wrong
+     and nothing about what to do, and that the next thing they will do is press
+     it again. This surface is the FIRST one anyone sees and it had exactly that
+     bug: `disabled={count === 0 || sites.length === 0}`.
+
+     NOTE WHAT IS NOT IN HERE: the funding floor. Below an average of ten per 期
+     a site loses the whole NT$36,000, so the number matters — but it is the
+     據點's number, not the device's business. A 場次 with five attendees starts
+     normally. FUNDED_ATTENDANCE_MIN is rendered as a count in the rail and gates
+     nothing, here or anywhere. */
+  const missing: 'no_site' | 'no_enrolment' | 'no_attendees' | null =
+    sites.length === 0
+      ? 'no_site'
+      : enrolled.length === 0
+        ? 'no_enrolment'
+        : count === 0
+          ? 'no_attendees'
+          : null
+
+  /** Take the facilitator to the control that fixes it. */
+  function goToFix(reason: 'no_site' | 'no_enrolment' | 'no_attendees') {
+    const el =
+      reason === 'no_site'
+        ? siteInputRef.current
+        : reason === 'no_enrolment'
+          ? labelInputRef.current
+          : picksRef.current
+    el?.scrollIntoView({ block: 'center', behavior: 'auto' })
+    el?.focus()
+  }
+
+  function begin() {
+    if (missing) {
+      // Surfaces the reason rather than doing nothing.
+      setPressed(true)
+      goToFix(missing)
+      return
+    }
+    onBegin({ siteId, year, cycle, phase, attendeeIds: [...attendees] })
+  }
+
+  const refusal = (reason: 'no_site' | 'no_enrolment' | 'no_attendees') => (
+    <Refusal
+      title={strings.setup.refuseTitle}
+      body={strings.setup.refuse[reason]}
+      actions={
+        <RailButton variant="quiet" onClick={() => goToFix(reason)}>
+          {strings.setup.refuseGoto[reason]}
+        </RailButton>
+      }
+    />
+  )
 
   const willReopen = existingSession?.status === 'completed'
   const sessionNote = existingSession
@@ -155,6 +226,7 @@ export function Setup({
     : strings.setup.begin
 
   function toggle(id: ParticipantId) {
+    touched.current = true
     setAttendees((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -218,9 +290,9 @@ export function Setup({
                 </label>
               )}
 
-              {sites.length === 0 && (
-                <p className="card__hint card__hint--note">{strings.setup.noSites}</p>
-              )}
+              {/* A sentence with the control to fix it directly reachable — the
+                  新增據點 form is immediately below, and the button focuses it. */}
+              {missing === 'no_site' && refusal('no_site')}
 
               {/* Creating a 據點 lives HERE rather than behind a settings screen.
                   It is also what makes concurrent 場次 possible without touching
@@ -231,6 +303,7 @@ export function Setup({
                 <label className="fld">
                   <span className="fld__label">{strings.setup.addSiteLabel}</span>
                   <input
+                    ref={siteInputRef}
                     className="fld__control"
                     type="text"
                     value={newSite}
@@ -248,6 +321,13 @@ export function Setup({
                   />
                   <span className="fld__hint">{strings.setup.addSiteHint}</span>
                 </label>
+                {/* THE ONE PLACE `disabled` IS STILL CORRECT, and the line is
+                    worth stating so it is not read as an oversight or copied as
+                    a licence. A refusal must give a route out when the reason
+                    lives SOMEWHERE ELSE — that is why 開始本場 is never disabled.
+                    Here the reason is the empty box 8px above the button, and it
+                    is already focused; the control IS the route out, so there is
+                    nothing a sentence could add. */}
                 <RailButton onClick={() => void addSite()} disabled={newSite.trim().length === 0}>
                   {strings.setup.addSiteAction}
                 </RailButton>
@@ -344,11 +424,21 @@ export function Setup({
                   <button
                     type="button"
                     className="linkbtn"
-                    onClick={() => setAttendees(new Set(enrolled.map((p) => p.id)))}
+                    onClick={() => {
+                      touched.current = true
+                      setAttendees(new Set(enrolled.map((p) => p.id)))
+                    }}
                   >
                     {strings.setup.selectAll}
                   </button>
-                  <button type="button" className="linkbtn" onClick={() => setAttendees(new Set())}>
+                  <button
+                    type="button"
+                    className="linkbtn"
+                    onClick={() => {
+                      touched.current = true
+                      setAttendees(new Set())
+                    }}
+                  >
                     {strings.setup.selectNone}
                   </button>
                 </div>
@@ -358,11 +448,12 @@ export function Setup({
                   no icon, no instruction: the count is the 據點's business. */}
               <p className="card__hint">{strings.setup.fundedNote}</p>
 
-              {/* First run: the 據點 has nobody yet. Say so rather than showing
-                  an empty box — the add form directly below is the answer. */}
-              {sorted.length === 0 && <p className="card__hint card__hint--note">{strings.setup.noEnrolment}</p>}
+              {/* Both stated as refusals with a route out, same as every other
+                  surface. Visible before the press, not only after it. */}
+              {missing === 'no_enrolment' && refusal('no_enrolment')}
+              {missing === 'no_attendees' && refusal('no_attendees')}
 
-              <ul className="picks">
+              <ul className="picks" ref={picksRef} tabIndex={-1}>
                 {sorted.map((p) => {
                   const on = attendees.has(p.id)
                   return (
@@ -382,6 +473,7 @@ export function Setup({
                 <label className="fld">
                   <span className="fld__label">{strings.setup.addFieldLabel}</span>
                   <input
+                    ref={labelInputRef}
                     className="fld__control"
                     type="text"
                     value={newLabel}
@@ -429,21 +521,19 @@ export function Setup({
         </div>
         <div className="rail__spacer" />
         <div className="rail__actions">
-          <span className="rail__note">{strings.setup.enrolledCount(enrolled.length)}</span>
+          <span className="rail__note" role="status">
+            {pressed && missing ? strings.setup.refuse[missing] : strings.setup.enrolledCount(enrolled.length)}
+          </span>
           {/* Whole-machine reset. Whole-場次 deletion lives on the session list;
               neither touches an individual record — see the deletion boundary in
               SessionDataSource.ts. */}
           <RailButton variant="quiet" onClick={onReset}>
             {strings.setup.resetAction}
           </RailButton>
-          <RailButton
-            variant="primary"
-            icon="roster"
-            disabled={count === 0 || sites.length === 0}
-            onClick={() =>
-              onBegin({ siteId, year, cycle, phase, attendeeIds: [...attendees] })
-            }
-          >
+          {/* NEVER DISABLED. Pressing it with something missing scrolls the
+              reason into view and focuses the control that fixes it — see
+              `missing` above, and the same posture in Trial.tsx and Roster.tsx. */}
+          <RailButton variant="primary" icon="roster" onClick={begin}>
             {beginWord}
           </RailButton>
         </div>

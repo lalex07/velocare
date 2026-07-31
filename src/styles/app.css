@@ -1527,6 +1527,15 @@
   text-wrap: pretty;
 }
 
+/* On a card the refusal shares the card's own ground, so it takes the field
+   colour instead — otherwise it is a bordered box the same colour as what it
+   sits on. Still not styled as an error: --alert stays reserved for the machine
+   failing, and a setup screen waiting for a 據點 name is the machine working. */
+.card .refusal {
+  background: var(--bg);
+  max-width: none;
+}
+
 /* Inside the locked participant field the refusal replaces the cue, so it takes
    participant-band type — the whole field is set at --t-part there and a 17px
    sentence in the middle of it would be unreadable from three metres. */
@@ -2013,6 +2022,12 @@
 .rail__note {
   font-size: var(--t-fac-sm);
   color: var(--ink-muted);
+  /* Carries either the enrolment count or, after a refused press, the reason.
+     Capped and wrapping so a sentence cannot push the primary action off the
+     rail. */
+  max-width: 40ch;
+  line-height: 1.45;
+  text-wrap: pretty;
 }
 
 /* ─── Result ─────────────────────────────────────────────────────────────────

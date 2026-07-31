@@ -355,6 +355,20 @@ Measured in a headless browser, not eyeballed.
 - **No cap on 稱謂.** 23 characters typed, 23 stored, `maxlength` absent, hint unchanged. Invariant 2
   is enforced by `enrolParticipant(siteId, label)` having nowhere to put an identifier, not by the
   field being too short to type a name into.
+- **No silently disabled primary actions.** Setup was the last surface with one
+  (`disabled={count === 0 || sites.length === 0}`) and it is the first screen anyone sees. It now
+  names three states — no 據點, nobody enrolled, nobody ticked — each as a sentence with a control
+  that focuses the field or list that fixes it. Verified in all three: the primary reads
+  `disabled: false`, pressing it moves `document.activeElement` to the right control and states the
+  reason in the rail. The refusal resolves to no `--alert` on ground, border, title or mark.
+- **Attendance ticks survive enrolling somebody.** Found while testing the refusal above: adding a
+  participant re-ran the preselect and re-ticked EVERYONE, so a facilitator who unticked two
+  absentees and then enrolled a newcomer silently got the absentees back — on the list the whole
+  場次 is recorded against. Verified fixed: untick one of three, enrol a fourth, and exactly one
+  stays unticked.
+- **The funding floor gates nothing** — verified, not assumed. A 場次 with **five attendees against
+  a floor of ten** starts normally and records five. The rail shows 給付門檻：每期平均 10 人 beside
+  本場出席 5 人; no refusal, no warning, no colour. The device reports; the site decides.
 - **Reduced motion.** All four animations collapse to instant state swaps; content is never gated
   behind a transition.
 - **No horizontal overflow** at 1280×800 or 1600×900.

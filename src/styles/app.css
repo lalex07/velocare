@@ -54,7 +54,12 @@
 
 /* The explicit up control. Duplicates the previous trail segment on purpose: a
    breadcrumb reads as location to some people and as a control to others, and a
-   standing part-time worker should not have to work out which. */
+   standing part-time worker should not have to work out which.
+
+   Fill dropped along with the crumbs', outline kept. It is the one thing in this
+   row that is purely a control rather than also a location, so it keeps a hairline
+   to stay identifiable — but a filled block here would make the back button the
+   heaviest chrome on the surface once the crumbs went flat. */
 .hdr__up {
   display: inline-flex;
   align-items: center;
@@ -64,8 +69,8 @@
   flex: 0 0 auto;
   border: 1px solid var(--line);
   border-radius: var(--r);
-  background: var(--surface);
-  color: var(--ink);
+  background: transparent;
+  color: var(--ink-secondary);
   transition: background var(--dur-fast) var(--ease-out);
 }
 
@@ -92,15 +97,25 @@
   padding: 0 var(--s-1);
 }
 
-/* Unmistakably tappable: a real border and fill, not underlined text. Full 64px
-   so every segment clears the facilitator tap floor. */
+/* FULL 64px HIT AREA, NEAR-ZERO VISUAL WEIGHT. The same trade the roster's
+   查看紀錄 makes: the border, the fill and the padding come off, the tap target
+   does not. `min-height: var(--tap)` is what holds the floor, and it is
+   independent of everything below it — nothing here may be changed to a smaller
+   box to make the row lighter.
+
+   These used to carry a real border and fill so that "tappable" was not
+   something you had to infer. At three segments they read as three chunky
+   buttons competing with the page title, which inverted the row's hierarchy: a
+   breadcrumb is navigation, and the place you are should be the loudest thing
+   in it. Hover and focus-visible still fill, so the affordance is reachable by
+   both pointer and keyboard — it is just no longer shouted at rest. */
 .trail__link,
 .trail__now {
   display: inline-flex;
   align-items: center;
   gap: var(--s-2);
   min-height: var(--tap);
-  padding: 0 var(--s-3);
+  padding: 0 var(--s-2);
   border-radius: var(--r);
   font-size: var(--t-fac);
   font-weight: 500;
@@ -109,27 +124,30 @@
 }
 
 .trail__link {
-  border: 1px solid var(--line);
-  background: var(--surface);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--ink-secondary);
   transition:
     background var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out);
 }
 
-.trail__link:hover {
+.trail__link:hover,
+.trail__link:focus-visible {
   background: var(--blue-50);
-  border-color: var(--line-strong);
+  border-color: var(--line);
   color: var(--ink);
 }
 
-/* The current surface. No border and no fill, so the path reads as "these are
-   places you can go, and you are here" rather than as a row of equal buttons. */
+/* The current surface, and THE HEAVIEST THING IN THE ROW. Larger and bolder than
+   the segments behind it, with no border and no fill, so the path reads as
+   "these are places you can go, and you are here" rather than as a row of equal
+   buttons. */
 .trail__now {
   border: 1px solid transparent;
   color: var(--ink);
   font-size: var(--t-fac-lg);
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .trail__now > span,
@@ -386,6 +404,16 @@
      Without this, lowering the facilitator scale silently narrowed `.cue` and
      re-broke 工作人員 across a line. */
   font-size: var(--t-part);
+}
+
+/* Centres a short block in a tall field. `safe` on both axes: when the content
+   is taller than the field — a narrow window, a long flag — safe centring falls
+   back to start alignment instead of overflowing past the scroll origin, which
+   is what plain centring or `margin: auto` would do and would put the top of the
+   readout out of reach. */
+.field--center {
+  justify-content: safe center;
+  align-items: safe center;
 }
 
 /* Fifty-fifty. Equal columns rather than `auto 1fr`, so the readout half cannot
@@ -1786,6 +1814,10 @@
    constraint rather than a layout preference.
    ──────────────────────────────────────────────────────────────────────────── */
 
+/* ONE CENTRED BLOCK. The time, the unit and the metadata row centre together on
+   a single axis — they are one readout, not a heading with details under it, and
+   centring the number while the facts stayed left would have pulled it apart.
+   Vertical centring lives on `.field--center` above; this owns the horizontal. */
 .res {
   padding: var(--s-8) var(--s-6);
   max-width: 900px;
@@ -1793,12 +1825,15 @@
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: var(--s-4);
 }
 
 .res__primary {
   display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: var(--s-3);
   flex-wrap: wrap;
 }
@@ -1826,6 +1861,7 @@
 .res__meta {
   display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: var(--s-6);
   flex-wrap: wrap;
 }
@@ -1844,6 +1880,7 @@
   line-height: 1.5;
   max-width: 60ch;
   text-wrap: pretty;
+  margin-inline: auto;
 }
 
 /* ─── Participant detail ─────────────────────────────────────────────────────
@@ -2134,9 +2171,14 @@
   align-items: center;
 }
 
+/* --series, not --accent. The per-rep times are direct-labelled in text beside
+   every bar, so the bar is redundant encoding rather than the data — it should
+   support the reading, not be the loudest thing on the surface. Non-text mark,
+   so the floor is 3:1 and not the text 4.5:1; see tokens.css for the measured
+   ratios and for why this is not simply "a lighter blue". */
 .split__bar {
   height: 100%;
-  background: var(--accent);
+  background: var(--series);
   /* Square at the baseline, 4px rounded at the data end. */
   border-radius: 0 4px 4px 0;
   min-width: 2px;
@@ -2264,7 +2306,8 @@
   gap: var(--s-2);
 }
 
-/* One hue, two shades — the before/after case, not two categorical hues. */
+/* One hue, two shades — the before/after case, not two categorical hues. Both
+   now clear the 3:1 non-text floor, which the old 前測 shade did not. */
 .ovl__swatch {
   width: 14px;
   height: 12px;
@@ -2273,11 +2316,11 @@
 }
 
 .ovl__swatch--pre {
-  background: var(--blue-300);
+  background: var(--series);
 }
 
 .ovl__swatch--post {
-  background: var(--blue-600);
+  background: var(--series-strong);
 }
 
 .ovl__plot {
@@ -2335,11 +2378,11 @@
 }
 
 .ovlbar__fill--pre {
-  background: var(--blue-300);
+  background: var(--series);
 }
 
 .ovlbar__fill--post {
-  background: var(--blue-600);
+  background: var(--series-strong);
 }
 
 /* Direct-labelled. Text wears text tokens, never the series colour. */

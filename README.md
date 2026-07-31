@@ -271,6 +271,18 @@ Measured in a headless browser, not eyeballed.
   that prompted this said the audit had flagged a favicon 404: **it had not.** The data URI was
   already there and the network log showed no favicon request at all. The swap is worth making on
   readability grounds; the 404 was not real.
+- **Chart bars are non-text marks, measured against the 3:1 floor** — not the 4.5:1 text floor,
+  which is what they had been held to. Rep-split bar **3.73:1** on its ground (3.45:1 against the
+  cream `--bg` as the harder case); overlay 前測 **3.73:1**, 後測 **5.69:1**, separated by 1.53×.
+  Down from `--accent` at 7.80:1, with chroma cut 0.148 → 0.100. The measurement also caught a
+  pre-existing failure: the overlay's old 前測 shade was **1.87:1**, already below the non-text
+  floor, so that shade had to be raised rather than softened and the pair is compressed toward the
+  middle rather than uniformly lightened.
+- **Breadcrumb weight came down, hit area did not.** All three segments and the ← measure exactly
+  **64 px** with fill and border fully transparent; the current segment is 20 px/700 against the
+  segments' 17 px/500, so it is the heaviest thing in the row. Hover and `:focus-visible` still
+  fill, and the global 3 px focus ring is unchanged. **Zero controls under 64 px** across all seven
+  surfaces, unchanged.
 - **Reduced motion.** All four animations collapse to instant state swaps; content is never gated
   behind a transition.
 - **No horizontal overflow** at 1280×800 or 1600×900.

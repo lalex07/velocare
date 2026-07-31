@@ -88,7 +88,10 @@ export function Result({
 
   return (
     <div className="zones">
-      <div className="field">
+      {/* `field--center` rather than padding: the readout is a short block on a
+          tall surface, and left-aligned at the top it read as a layout that had
+          not been finished rather than as one that is deliberately quiet. */}
+      <div className="field field--center">
         <div className="res">
           {/* The time, and essentially nothing else. */}
           <div className="res__primary">

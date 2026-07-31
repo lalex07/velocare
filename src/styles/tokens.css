@@ -99,6 +99,36 @@
   --st-unable: oklch(0.416 0.135 310); /* not attempted   · violet  */
   --st-discarded: var(--ink-muted); /* voided — an absence       */
 
+  /* ── Chart series ── NON-TEXT MARKS, A DIFFERENT FLOOR ────────────────────
+     Bars are graphical objects, so the floor is 3:1 against their ground — not
+     the 4.5:1 text minimum and not the 7:1 participant floor. Applying a text
+     floor here is what made the rep-split bars the loudest thing on the
+     participant record: they ran at --accent, 7.80:1, for data that is DIRECTLY
+     LABELLED IN TEXT beside every bar. The bar is redundant encoding; the
+     number is the data. It should support the reading, not dominate it.
+
+     Chroma is cut as well as lightness raised — 0.148 → 0.100 — because
+     saturation is most of what reads as loud. Two shades of one hue, differing
+     only in lightness, which is the correct before/after encoding: they are one
+     series measured twice, not two categories.
+
+     MEASURED against --surface-raised, the ground these actually render on
+     (.pd__phase and .ovl), and against --bg as the harder case:
+
+                        --surface-raised   --bg    floor
+       --series              3.73          3.45     3:1
+       --series-strong       5.69          5.27     3:1
+
+     NOTE what this replaced: the overlay's 前測 shade was --blue-300 at
+     1.87:1 — already below the non-text floor before any of this. It could not
+     be softened, only raised. So the pair is COMPRESSED toward the middle
+     rather than uniformly lightened, and that is why 前測 is now darker than it
+     was while 後測 is lighter. Re-measure after any change; the gap between
+     --blue-400 (2.75:1) and --blue-500 (4.43:1) is where the 3:1 line falls, so
+     no existing ramp step sits usefully close to it. */
+  --series: oklch(0.600 0.100 250);
+  --series-strong: oklch(0.500 0.100 250);
+
   /* ── Type ─────────────────────────────────────────────────────────────── */
   --font: 'Noto Sans TC', 'PingFang TC', 'Heiti TC', 'Microsoft JhengHei',
     sans-serif;

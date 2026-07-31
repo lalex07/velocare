@@ -568,9 +568,22 @@ learning anything:
 
 Back is *also* duplicated as an explicit ← control at the left of the trail. A
 breadcrumb segment reads as location to some people and as a control to others,
-and a standing part-time worker should not have to work out which. Every segment
-and the ← are full 64px targets; the segments carry a real border and fill, not
-underlined text, so "tappable" is not something you have to infer.
+and a standing part-time worker should not have to work out which.
+
+**Every segment and the ← are full 64px targets, and the visual weight is
+independent of that.** The segments used to carry a real border and fill so that
+"tappable" was not something you had to infer. At three segments that inverted
+the row's hierarchy: three chunky filled buttons competing with the page title,
+when a breadcrumb is navigation and the place you *are* should be the loudest
+thing in it. So the fill, the border and half the horizontal padding came off —
+`min-height: var(--tap)` holds the floor and is untouched — and the current
+segment went to 20px/700 against the segments' 17px/500. Hover and
+`:focus-visible` still fill, and the global 3px focus ring is unchanged, so the
+affordance is reachable by pointer and keyboard alike; it is just no longer
+shouted at rest.
+
+This is the same trade the roster's 查看紀錄 makes, and the rule generalises:
+**weight is a separate axis from hit area, and only weight is negotiable.**
 
 **The current segment is the page's `<h1>`.** That gives exactly one heading per
 surface and a well-formed outline — the trial screen had no heading at all before
@@ -729,7 +742,19 @@ people already in this 期 rather than to the site's whole book.
 ## Result — the post-trial surface
 
 Reached the instant a trial settles. **Its only job is this person's time, and
-move on.** The measured time prominently, any flag stated plainly, a primary
+move on.**
+
+The readout is **centred on both axes as one block** — the time, the unit and
+the metadata row together. Left-aligned at the top of a tall field it read as a
+layout that had not been finished rather than as one that is deliberately quiet,
+which is the failure mode austerity has: it looks identical to neglect unless the
+composition is doing visible work. Centring the number while the facts stayed
+left would have pulled the same block into two, so they share one axis.
+
+Vertical centring uses `justify-content: safe center`, not `margin: auto`: with
+`safe`, content taller than the field falls back to start alignment instead of
+overflowing past the scroll origin and putting the top of the readout out of
+reach on a short window. The measured time prominently, any flag stated plainly, a primary
 action that names the next participant, and one quiet link into the full record.
 
 ### It shows no history, and that is a dignity constraint
@@ -868,6 +893,43 @@ gap between neighbours, and text in text tokens rather than the series colour.
 Bar width is scaled against **the trial's own longest rep**. The comparison is
 strictly internal to that measurement; an external scale would be importing a
 norm.
+
+#### Bars are non-text marks, and the floor is 3:1
+
+The bars ran at `--accent` — **7.80:1**, the same weight as the primary action —
+and were the loudest thing on the participant record. That was a category error:
+the text floors (4.5:1 general, 7:1 in the participant field) apply to *text*,
+and a bar is a non-text graphical object whose floor is **3:1**. Worse, the
+per-rep times are **direct-labelled in text beside every bar**, so the bar is
+redundant encoding and the number is the data. A redundant encoding should
+support the reading, not dominate it.
+
+Two `--series` tokens now carry the chart, at reduced lightness *and* reduced
+chroma — 0.148 → 0.100 — because saturation is most of what reads as loud:
+
+| Mark | Ground | Measured | Floor |
+|---|---|---|---|
+| Rep-split bar (`--series`) | `--surface-raised` | **3.73:1** | 3:1 |
+| Overlay 前測 (`--series`) | `--surface-raised` | **3.73:1** | 3:1 |
+| Overlay 後測 (`--series-strong`) | `--surface-raised` | **5.69:1** | 3:1 |
+| Any of the above | `--bg`, as the harder case | 3.45 / 3.45 / 5.27 | 3:1 |
+
+**The old 前測 shade was already failing.** `--blue-300` measured **1.87:1** —
+below the non-text floor before any of this started. It could not be softened,
+only raised, so the pre/post pair is now *compressed toward the middle* rather
+than uniformly lightened: 前測 is darker than it was and 後測 is lighter. They
+stay one hue at two lightnesses — the correct before/after encoding — separated
+by 1.53× in contrast, and each bar still carries its series word, so colour is
+never the sole channel.
+
+No ramp step sits usefully near the line: `--blue-400` is 2.75:1 and
+`--blue-500` is 4.43:1, and 3:1 falls between them. That is why these are their
+own semantic tokens rather than another ramp reference.
+
+Ambiguity at the light end was checked rather than assumed: the shortest bar in
+the fixture set renders at 350px against a 432px longest, and the `min-width:
+2px` floor only matters for a rep that is a rounding error of the longest, which
+the protocol does not produce.
 
 ## The mark
 

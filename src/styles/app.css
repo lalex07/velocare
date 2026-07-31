@@ -20,11 +20,70 @@
   flex: 0 0 auto;
 }
 
-.app > .zones,
-.app > .field,
-.app > .sheet-screen {
+/* The skip link's target, and the reason it is a wrapper in the shell rather
+   than an id on each surface: every current AND future surface is covered
+   without anyone remembering to add one. `position: relative` anchors nothing
+   here — the skip link is positioned against `.app`. */
+.app__main {
   flex: 1 1 auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app {
+  position: relative;
+}
+
+.app__main > .zones,
+.app__main > .field,
+.app__main > .sheet-screen {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ─── Skip link ──────────────────────────────────────────────────────────────
+   Ported from lalex07/Clinic's `.skip-link`: absolutely positioned, translated
+   off-screen, revealed on :focus with a visible outline.
+
+   TWO DELIBERATE DIVERGENCES from the source, both because a house rule beats a
+   port:
+     - `border-radius: var(--r)`, not the source's `999px`. Nothing in this
+       product is pill-shaped — see the radius scale in tokens.css. A fully
+       rounded control reads as a consumer app badge.
+     - the transition runs on `var(--dur)`, which collapses to 1ms under
+       prefers-reduced-motion. The source's hard-coded 0.25s does not, and a
+       skip link that slides is a skip link that is briefly unreadable.
+
+   Full --tap height like every other control here: it is the first thing a
+   keyboard user lands on and there is no reason for it to be the one target
+   that is hard to hit.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.skip-link {
+  position: absolute;
+  left: 50%;
+  top: var(--s-2);
+  transform: translate(-50%, -200%);
+  z-index: var(--z-overlay);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 var(--s-6);
+  border-radius: var(--r);
+  background: var(--accent);
+  color: var(--bg);
+  font-size: var(--t-fac);
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 8px 28px oklch(0.25 0.02 255 / 0.18);
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.skip-link:focus {
+  transform: translate(-50%, 0);
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
 }
 
 /* ─── Header ─────────────────────────────────────────────────────────────────
@@ -92,8 +151,15 @@
   min-width: 0;
 }
 
+/* Clinic puts separators on `--line-strong`. Measured here that is 4.39:1 as
+   text on the header ground — under the 4.5 floor. It is `aria-hidden` and
+   decorative, so WCAG technically exempts it, but weakening the audit to let a
+   4.39 through is a worse habit than picking the next token up. `--ink-muted`
+   is 6.55:1 and still reads fainter than the 8.85:1 links beside it, which is
+   the whole visual intent. */
 .trail__sep {
   color: var(--ink-muted);
+  font-size: var(--t-fac-sm);
   padding: 0 var(--s-1);
 }
 
@@ -117,16 +183,20 @@
   min-height: var(--tap);
   padding: 0 var(--s-2);
   border-radius: var(--r);
-  font-size: var(--t-fac);
-  font-weight: 500;
   white-space: nowrap;
   min-width: 0;
 }
 
+/* Small type and faint ink, per Clinic's `.breadcrumb a`. No ground of any
+   kind. `min-height: var(--tap)` is what holds the 64px floor and it is the one
+   line in this block that must not be touched to make the row lighter — the
+   type scale went down, the target did not. */
 .trail__link {
   border: 1px solid transparent;
   background: transparent;
   color: var(--ink-secondary);
+  font-size: var(--t-fac-sm);
+  font-weight: 500;
   transition:
     background var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out);
@@ -143,9 +213,18 @@
    the segments behind it, with no border and no fill, so the path reads as
    "these are places you can go, and you are here" rather than as a row of equal
    buttons. */
+/* The current segment in the primary colour, heavier than the links, per
+   Clinic's `.breadcrumb span[aria-current]`.
+
+   It does NOT take Clinic's breadcrumb type size. There the breadcrumb is a
+   strip above a separate huge <h1>; here the current segment IS the surface's
+   <h1>, so shrinking it to 15px would leave every screen without a readable
+   heading. Small type applies to the links, which are navigation; the current
+   segment stays at --t-fac-lg because it is the page title. --accent measures
+   7.80:1 on the header ground. */
 .trail__now {
   border: 1px solid transparent;
-  color: var(--ink);
+  color: var(--accent);
   font-size: var(--t-fac-lg);
   font-weight: 700;
 }

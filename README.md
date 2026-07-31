@@ -283,6 +283,14 @@ Measured in a headless browser, not eyeballed.
   segments' 17 px/500, so it is the heaviest thing in the row. Hover and `:focus-visible` still
   fill, and the global 3 px focus ring is unchanged. **Zero controls under 64 px** across all seven
   surfaces, unchanged.
+- **Skip link.** Present on every surface, off-screen until focused, then 64 px tall and fully in
+  viewport with a 3 px outline; activating it moves focus to `<main id="main">` (verified:
+  `document.activeElement` is `MAIN#main` after the click, not merely a scroll). Cream on accent
+  measures 7.21:1. It does **not** fix the twelve-rows-to-footer problem that prompted it — see
+  `DESIGN.md`.
+- **Breadcrumb, second pass.** Links now 15 px `--ink-secondary`, separators muted, current segment
+  `--accent` at 700 — all four nav targets still measure exactly **64 px**, fill and border fully
+  transparent. Zero controls under 64 px across all seven surfaces.
 - **Reduced motion.** All four animations collapse to instant state swaps; content is never gated
   behind a transition.
 - **No horizontal overflow** at 1280×800 or 1600×900.

@@ -215,6 +215,8 @@ export interface Strings {
     readonly switchToPost: string
     readonly home: string
     readonly back: string
+    /** The skip link. First thing a keyboard user reaches on every surface. */
+    readonly skipToMain: string
     readonly placeSessions: string
     readonly placeSetup: string
     /** Landmark label for the back-to-hub control. */
@@ -590,6 +592,7 @@ const zhTW: Strings = {
   nav: {
     switchToPre: '切換至前測',
     switchToPost: '切換至後測',
+    skipToMain: '跳到主要內容',
     home: '場次清單',
     back: '上一層',
     placeSessions: '場次清單',

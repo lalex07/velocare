@@ -289,6 +289,10 @@ export function App() {
      land. See SessionBand.tsx. */
   const shell = (body: React.ReactNode) => (
     <div className="app">
+      {/* First tab stop on every surface. Off-screen until focused. */}
+      <a className="skip-link no-print" href="#main">
+        {strings.nav.skipToMain}
+      </a>
       <AppHeader
         trail={trail}
         demoSlot={<DemoBadge simulated={src.isSimulated} />}
@@ -304,7 +308,14 @@ export function App() {
       {active && block && view.kind !== 'sessions' && view.kind !== 'setup' && (
         <SessionBand identity={identityOf(active, block)} switchedTo={switchedTo} />
       )}
-      {body}
+      {/* The skip link's target. A wrapper the shell owns rather than an id on
+          each surface, so a surface added later cannot forget to carry one and
+          leave the link pointing at nothing. `tabIndex={-1}` is what lets focus
+          actually land here; without it the browser scrolls but focus stays put
+          and the next Tab returns to the header. */}
+      <main id="main" className="app__main" tabIndex={-1}>
+        {body}
+      </main>
     </div>
   )
 

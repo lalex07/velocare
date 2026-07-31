@@ -585,6 +585,48 @@ shouted at rest.
 This is the same trade the roster's 查看紀錄 makes, and the rule generalises:
 **weight is a separate axis from hit area, and only weight is negotiable.**
 
+A second pass took it further, toward `lalex07/Clinic`'s `.breadcrumb`: links at
+`--t-fac-sm` in `--ink-secondary`, separators muted, the current segment in
+`--accent` at 700. Two deliberate divergences from that source:
+
+- **The current segment keeps `--t-fac-lg`.** In Clinic the breadcrumb is a strip
+  above a separate large `<h1>`; here the current segment *is* the surface's
+  `<h1>`, so taking the source's uniform small size would leave every screen
+  without a readable heading. Small type is for the links, which are navigation.
+- **Separators are `--ink-muted`, not `--line-strong`.** Measured, `--line-strong`
+  as text on the header ground is **4.39:1** — under the 4.5 floor. It is
+  `aria-hidden` and decorative so WCAG exempts it, but relaxing the audit to let a
+  4.39 through is a worse habit than taking the next token up. `--ink-muted` is
+  6.55:1 and still reads fainter than the 8.85:1 links beside it, which was the
+  whole visual intent.
+
+## The skip link
+
+Ported from `lalex07/Clinic`: absolutely positioned, translated off-screen,
+revealed on `:focus` with a visible outline, targeting the main content region.
+
+**The target is a `<main id="main">` wrapper the app shell owns, not an id on each
+surface.** Every current and future surface is covered without anyone remembering
+to add one — a skip link pointing at nothing is worse than none, because it
+reports as present to an audit. `tabIndex={-1}` on the wrapper is what makes
+focus actually land there; without it the browser scrolls and focus stays put, so
+the next Tab returns to the header.
+
+Two divergences from the source, both because a house rule beats a port:
+`border-radius: var(--r)` rather than its `999px` — nothing here is pill-shaped —
+and a transition on `var(--dur)`, which collapses to 1 ms under
+`prefers-reduced-motion` where the source's hard-coded 0.25 s does not. It carries
+the full `--tap` height like every other control: it is the first thing a keyboard
+user lands on, and there is no reason for it to be the one target that is hard to
+hit.
+
+**Known limit — it does not solve the problem that prompted it.** The stated pain
+was tabbing through twelve roster rows to reach the footer actions. A skip link
+lands you at the *start* of the main region, which on the roster is the top of
+those twelve rows. Fixing that needs a second skip target on the facilitator rail,
+which is not built: the rails live inside each surface rather than in the shell,
+so unlike `#main` it would not be self-maintaining.
+
 **The current segment is the page's `<h1>`.** That gives exactly one heading per
 surface and a well-formed outline — the trial screen had no heading at all before
 this, and the setup screen and the sheet each briefly had two.

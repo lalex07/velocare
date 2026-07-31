@@ -265,6 +265,7 @@
      a sheet that comfortably fits A4 emit two pages. Flatten the shell so only
      the sheet reaches paper. */
   .app,
+  .app__main,
   .zones,
   .field {
     display: block;

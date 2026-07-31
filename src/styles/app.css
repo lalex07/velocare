@@ -214,41 +214,32 @@
   min-width: 0;
 }
 
-/* ─── Logo placeholder ───────────────────────────────────────────────────── */
+/* ─── The mark ───────────────────────────────────────────────────────────── */
 
+/* The mark sits on the wordmark's BASELINE and is capped at its CAP HEIGHT.
+   Both in `em`, both against the wordmark's own font-size, so the relationship
+   survives a change to --t-fac without being re-tuned. */
 .logo {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  flex: 0 0 auto;
-}
-
-/* The dashed outline is the whole point: it is the standard convention for
-   "artwork pending" and stops this reading as a weak real logo. */
-.logo__slot {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 1.5px dashed var(--line-strong);
-  border-radius: var(--r-sm);
-  color: var(--accent);
-}
-
-.logo__mark {
-  width: 19px;
-  height: 19px;
-}
-
-/* Single line. The stacked wordmark-over-caption cost the header a row of
-   height; the dashed slot already carries the "artwork pending" signal, and the
-   caption rides beside the wordmark as a small badge instead. */
-.logo__text {
   display: inline-flex;
   align-items: baseline;
   gap: var(--s-2);
-  line-height: 1.15;
+  flex: 0 0 auto;
+  font-size: var(--t-fac);
+}
+
+/* 0.74em is MEASURED, not assumed: Noto Sans TC's cap height read back through
+   canvas TextMetrics at 700 weight is 12.60px on a 17px em — a ratio of 0.741.
+   The viewBox is the cap; the ink fills about 94% of it, so the drawn mark lands
+   just UNDER cap height, which is the correct side of "must not exceed".
+
+   It is an identifier, not a feature. The old placeholder ran 19px inside a 30px
+   dashed slot — half again the height of the word it belongs to, which is what a
+   provisional marker should look like and not what a real mark should. */
+.logo__mark {
+  width: 0.74em;
+  height: 0.74em;
+  flex: 0 0 auto;
+  color: var(--accent);
 }
 
 .logo__word {
@@ -256,23 +247,6 @@
   font-weight: 700;
   color: var(--ink);
   letter-spacing: 0.01em;
-}
-
-.logo__provisional {
-  font-size: 0.6875rem;
-  color: var(--ink-muted);
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--r-xs);
-  padding: 0.1em 0.4em;
-  white-space: nowrap;
-}
-
-@media (max-width: 1180px) {
-  /* The trail is the header's job; the placeholder caption is not, so it is the
-     first thing to go when the row gets tight. */
-  .logo__provisional {
-    display: none;
-  }
 }
 
 /* ─── Icons ──────────────────────────────────────────────────────────────── */

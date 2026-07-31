@@ -42,6 +42,26 @@
   margin-bottom: 4mm;
 }
 
+/* The mark on the title's baseline, capped at the title's cap height — the same
+   rule it follows beside the wordmark in the app header, applied to the type it
+   sits beside here. On the baseline and inside the title's own line box, so it
+   adds NO height to a sheet whose one-page capacity is measured in rows. */
+.sheet__titleline {
+  display: flex;
+  align-items: baseline;
+  gap: 2.5mm;
+}
+
+.sheet__mark {
+  width: 0.74em;
+  height: 0.74em;
+  flex: 0 0 auto;
+  /* No colour of its own. It inherits the sheet's #000, which is what keeps the
+     chroma-0 print rule true without an exception for the mark. */
+  color: inherit;
+  font-size: 18pt;
+}
+
 .sheet__title {
   font-size: 18pt;
   font-weight: 700;

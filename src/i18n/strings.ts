@@ -16,7 +16,6 @@ export interface Strings {
   readonly app: {
     readonly name: string
     readonly assessmentName: string
-    readonly logoProvisional: string
   }
   readonly demo: {
     readonly badge: string
@@ -368,8 +367,6 @@ const zhTW: Strings = {
   app: {
     name: 'VeloCare',
     assessmentName: '五次起立坐下量測',
-    // Marks the logo slot as artwork-pending. Removed when a real identity lands.
-    logoProvisional: '標誌暫定',
   },
 
   demo: {

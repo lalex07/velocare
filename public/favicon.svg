@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-13 -13 118 118" role="img" aria-label="VeloCare">
+  <!--
+    THE ONE PLACE THE MARK CARRIES A LITERAL COLOUR, and the only place it may.
+
+    Everywhere else it is `currentColor` (see src/components/Logo.tsx), which is
+    what lets the printed sheet inherit #000 and stay chroma 0. A favicon has no
+    inheritable context: `currentColor` at the root of a standalone SVG resolves
+    to the UA's initial text colour, so the mark would be black on every browser
+    and invisible against a dark tab strip. Hence explicit values, and a
+    prefers-color-scheme override so it survives a dark browser theme.
+
+    Values are the sRGB readback of the design tokens, not eyeballed:
+      #f4f0e6  --bg              (cream ground)
+      #004f96  --accent          (--blue-700, the mark)
+      #18222f  --ink             (ground, reversed)
+      #fbf9f3  --surface-raised  (mark, reversed)
+
+    PATH DATA IS BYTE-IDENTICAL TO Logo.tsx. The padding comes from the viewBox
+    origin rather than from moving the mark, so the two cannot drift: at a bare
+    0 0 92 92 the stroke caps and caliper end-stops touch the rounded corners at
+    16px. If the geometry changes, change both files — the stroke widths and the
+    end-stops are the concept, not decoration.
+  -->
+  <style>
+    .ground { fill: #f4f0e6; }
+    .mark { stroke: #004f96; }
+    @media (prefers-color-scheme: dark) {
+      .ground { fill: #18222f; }
+      .mark { stroke: #fbf9f3; }
+    }
+  </style>
+  <rect class="ground" x="-13" y="-13" width="118" height="118" rx="24" />
+  <g class="mark" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 74 L26 74 C46 74 46 18 66 18 L82 18" stroke-width="9" />
+    <path d="M10 62 L10 86 M82 6 L82 30" stroke-width="6.5" />
+  </g>
+</svg>

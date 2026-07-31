@@ -37,6 +37,7 @@ import {
   type SessionId,
 } from '../domain/types'
 import { strings } from '../i18n/strings'
+import { LogoMark } from '../components/Logo'
 import { RailButton } from '../components/RailButton'
 import { Shape } from '../components/Shape'
 
@@ -113,8 +114,16 @@ export function Sheet({
           <header className="sheet__head">
             {/* <h2>, not <h1>: on screen the header trail owns the page
                 heading, and two <h1>s is a malformed outline. On paper the size
-                is unchanged, so it still reads as the document title. */}
-            <h2 className="sheet__title">{strings.sheet.title}</h2>
+                is unchanged, so it still reads as the document title.
+
+                The mark rides on the title's baseline at its cap height — the
+                same rule it follows beside the wordmark in the app header. It is
+                pure `currentColor`, so it inherits the sheet's #000 and stays
+                chroma 0 on paper without a second drawing. */}
+            <div className="sheet__titleline">
+              <LogoMark className="sheet__mark" />
+              <h2 className="sheet__title">{strings.sheet.title}</h2>
+            </div>
             <p className="sheet__subtitle">{strings.sheet.subtitle}</p>
             <div className="sheet__meta">
               <span className="sheet__meta-item">

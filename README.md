@@ -255,6 +255,22 @@ Measured in a headless browser, not eyeballed.
   900 px or in portrait. Smallest hero anywhere is 6rem, three times the 2rem participant floor.
   With no camera the readout takes the whole field. See `DESIGN.md` for what this gave up: the rep
   count is no longer the largest element on screen, only in its half.
+- **The mark.** `currentColor` and no fill, so one drawing serves accent-blue-on-cream in the
+  header and **pure black on paper** — verified on the sheet as `stroke: rgb(0,0,0)`, `fill: none`,
+  chroma 0, alongside all 104 achromatic text nodes. Capped at the cap height of the type it sits
+  beside, in `em`: 12.58 px against a measured 12.60 px cap in the header, 17.75 px against 17.78 px
+  on the sheet, both on the baseline. On the sheet it sits inside the title's own line box, so it
+  costs **zero rows** of one-page capacity — still 13, re-measured by rendering to A4.
+  **Known limit:** at the header's 12.6 px the caliper end-stops are a 0.89 px stroke protruding
+  ~1.0 px, so on a 1× display the mark reads as a bare S-curve rather than a dimensioned one. It
+  resolves at 2×, and is unambiguous at 24 px and up. Recorded in `DESIGN.md` rather than fixed by
+  quietly enlarging it.
+- **Favicon.** Now a real `public/favicon.svg` rather than a percent-encoded data URI — same
+  self-containment (bundled into `dist/`, same origin, no network), but reviewable. Vite rewrites
+  the href to `./favicon.svg` under `base: './'`, so it survives a subpath deploy. Note the brief
+  that prompted this said the audit had flagged a favicon 404: **it had not.** The data URI was
+  already there and the network log showed no favicon request at all. The swap is worth making on
+  readability grounds; the 404 was not real.
 - **Reduced motion.** All four animations collapse to instant state swaps; content is never gated
   behind a transition.
 - **No horizontal overflow** at 1280×800 or 1600×900.

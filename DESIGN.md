@@ -331,7 +331,7 @@ number legible at three metres" or for a government funding report.
 | `Result` | Post-trial. This person's time, and move on. **No history — see above.** |
 | `ParticipantDetail` | One person, both phases, splits, full attempt history. |
 | `RepSplits` | Within-trial rep durations. Sequential, one series, direct-labelled. |
-| `Logo` | Placeholder mark in a dashed slot. Obviously provisional. |
+| `Logo` | The mark plus wordmark. `currentColor`, capped at cap height. `LogoMark` alone for the sheet. |
 | `Icon` | Wayfinding and action glyphs. SVG, never a font glyph. |
 | `CameraSelfView` | Mirrored participant self-view. Fills its half of the split. |
 | `CameraControls` | Facilitator half: opt-in button, privacy text, unavailable paths. |
@@ -520,9 +520,9 @@ What moved:
 
 - **The demo marker folded into the header** as a badge with the sentence behind
   it. See below for why that does not weaken the disclosure.
-- **The logo went to one line.** The dashed slot already carries the
-  artwork-pending signal, so the 標誌暫定 caption rides beside the wordmark as a
-  small badge instead of stacking under it, and hides below 1180px.
+- **The logo went to one line**, and later lost its placeholder chrome
+  entirely: the dashed slot and the 標誌暫定 caption are gone, replaced by the
+  real mark at cap height beside the wordmark. See **The mark** below.
 - **示範情境 was demoted.** It is a demo affordance, not a product control, so it
   carries no border and no fill and reads as a note. Its 64px hit area is kept:
   quiet is about weight, not about being hard to hit.
@@ -869,15 +869,83 @@ Bar width is scaled against **the trial's own longest rep**. The comparison is
 strictly internal to that measurement; an external scale would be importing a
 norm.
 
-## The logo slot
+## The mark
 
-Deliberately provisional. There is no brand for this product yet and inventing one here would be a
-claim the project cannot back, so the slot is filled with something that reads unmistakably as a
-placeholder rather than as a weak logo: the mark sits in a **dashed outline**, the standard
-convention for artwork-pending, and carries a 標誌暫定 label. Whoever designs the real identity
-replaces `Logo.tsx`; nothing else needs to change.
+```
+  ┌ end-stop                              end-stop ┐
+  │                                 ╭──────────────│
+  │                                ╱               ╵  standing hip height
+  │                               ╱
+  ╵──────────────╮              ╱
+   seated hip    ╰─────────────╯
+```
 
-## Spacing & radii
+**It is the hip-height trace of one sit-to-stand, dimensioned.** Flat at the
+seated height, an S-curve up, flat at the standing height — with a caliper
+end-stop at each of the two heights.
+
+**The end-stops are the whole idea, and they are the thing to protect if this is
+ever redrawn.** Without them the shape is a curve, and a curve going up and to
+the right is a motion swoosh — which puts the product squarely in the consumer
+fitness family the anti-references rule out, and claims something about
+energy and progress that a measuring instrument has no business claiming. With
+them it is a **dimensioned measurement**: two positions, and the distance
+between them. That is what this product actually does, and it is the same claim
+the printed sheet makes. A swoosh would be the first piece of the interface to
+lie.
+
+The two weights are load-bearing in the same way: the trace is `stroke-width: 9`
+and the end-stops are `6.5`, because on a dimension drawing the ticks are
+thinner than the thing being dimensioned. Equal weights would read as a bracket.
+
+### It is `currentColor`, everywhere, with one exception
+
+No fill anywhere, no literal colour anywhere, in `Logo.tsx`. One drawing serves
+accent blue on cream in the app header, **pure black on the printed sheet**, and
+reversed on a dark ground if that ever exists. This is not tidiness: it is what
+keeps the print rule — every mark on paper measures chroma 0 — true without an
+exception, and verified rather than asserted (the sheet mark reads
+`stroke: rgb(0,0,0)`, `fill: none`).
+
+The one exception is `public/favicon.svg`, which must carry literal values
+because a standalone SVG has no context to inherit: `currentColor` at the root
+resolves to the UA's initial text colour, so the mark would be black on every
+browser and invisible against a dark tab strip. It carries the token readbacks
+(`#004f96` on `#f4f0e6`, reversed under `prefers-color-scheme: dark`) and an
+identical copy of the path data. **If the geometry changes, change both files.**
+
+### Size: capped at cap height, in `em`
+
+**The mark never exceeds the cap height of the type it sits beside**, and is
+sized in `em` against that type so the relationship survives a change to
+`--t-fac` without being re-tuned. Measured, not assumed: Noto Sans TC's cap
+height read back through canvas `TextMetrics` at weight 700 is **12.60 px on a
+17 px em — a ratio of 0.741**, so the box is `0.74em`. The ink fills about 94%
+of the viewBox, so the drawn mark lands just *under* cap height, which is the
+correct side of "must not exceed". It sits on the baseline, not centred.
+
+The same rule, the same `0.74em`, applies on the printed sheet against the 18 pt
+title — where it also sits inside the title's own line box and therefore costs
+the one-page sheet **zero rows** of capacity.
+
+It is an identifier, not a feature. The placeholder it replaced ran 19 px inside
+a 30 px dashed slot — half again the height of the word it belongs to, which is
+what a provisional marker should look like and not what a real mark should.
+
+### Known limit: the end-stops do not survive the header at 1× density
+
+At the header's 12.6 px cap the end-stop stroke is **0.89 CSS px** and each tick
+protrudes about **1.0 px** past the trace edge. On a 1× display that is a single
+pixel and the mark reads as a bare S-curve — the swoosh the concept exists to
+avoid. At 2× it resolves, and at 24 px and above the end-stops are unambiguous
+(verified by rendering at 220/64/24/12.6 px). Recorded rather than fixed,
+because the size ceiling is a deliberate constraint and loosening it unilaterally
+would trade a stated design rule for a rendering detail. If the appliance turns
+out to be a 1× panel, the options are a slightly heavier end-stop weight *at
+small sizes only*, or accepting the swoosh reading in the header while the sheet
+— where the mark is 17.8 px and prints at 300 dpi — carries the real thing.
+
+## Spacing & radii## Spacing & radii
 
 ```css
 --s-1: 0.25rem;  --s-2: 0.5rem;   --s-3: 0.75rem;  --s-4: 1rem;

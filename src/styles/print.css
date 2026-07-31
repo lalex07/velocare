@@ -120,6 +120,24 @@
   font-size: 9.5pt;
 }
 
+/* Example data, stated above the table, INSIDE the coverage block.
+
+   As a boxed element of its own it cost 12.7mm — its own margin, border, padding
+   and line — and pushed a twelve-row sheet to two pages. Sharing the coverage
+   block turns the whole metadata region into one box and costs a single line
+   instead. Measured by rendering to A4 and counting pages, per the note above;
+   the estimate route is what produced the two-page sheet in the first place. */
+.sheet__coverage--example {
+  border: 1.5pt solid #000;
+  padding: 2mm 3mm;
+  margin-top: 2.5mm;
+}
+
+.sheet__example {
+  flex: 0 0 100%;
+  line-height: 1.4;
+}
+
 /* ── Table ───────────────────────────────────────────────────────────────── */
 
 .sheet__table {

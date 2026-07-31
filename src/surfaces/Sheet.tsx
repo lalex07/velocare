@@ -141,8 +141,26 @@ export function Sheet({
             </div>
 
             {/* Which 場次 this sheet covers, and which one it came from. Both on
-                paper: a report that only a screen can identify is not a report. */}
-            <div className="sheet__coverage">
+                paper: a report that only a screen can identify is not a report.
+
+                EXAMPLE DATA IS SAID HERE TOO, INSIDE THE SAME BLOCK. A badge
+                would not do: this sheet leaves the building, filed with a
+                funding report by someone who was not in the room, so the
+                marking has to be a sentence that survives being read cold and
+                has to say what the numbers may NOT be used for. Above the table,
+                because a reader must meet it before the numbers.
+
+                It shares this block rather than taking one of its own — as a
+                separate boxed element it cost 12.7mm and pushed a twelve-row
+                sheet to two pages. Inside, the whole metadata block simply
+                becomes boxed and the notice adds one line. Measured; see
+                print.css. */}
+            <div className={block.isExample ? 'sheet__coverage sheet__coverage--example' : 'sheet__coverage'}>
+              {block.isExample && (
+                <p className="sheet__example">
+                  <strong>{strings.example.tag}</strong>　{strings.example.sheetNotice}
+                </p>
+              )}
               <span className="sheet__meta-item">
                 <span className="sheet__meta-label">{strings.sheet.coverage}</span>
                 <span className="sheet__meta-value">
@@ -240,6 +258,11 @@ export function Sheet({
             <p>{strings.sheet.footerComparable}</p>
             <p>{strings.sheet.footerHandContact}</p>
             <p>{strings.sheet.footerPrivacy}</p>
+            {block.isExample && (
+              <p>
+                <strong>{strings.example.tag}</strong>　{strings.example.sheetNotice}
+              </p>
+            )}
             {src.isSimulated && (
               <p>
                 <strong>{strings.demo.badge}</strong>　{strings.demo.detail}

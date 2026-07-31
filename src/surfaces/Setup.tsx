@@ -294,6 +294,10 @@ export function Setup({ onBegin }: { onBegin: (setup: SessionSetup) => void }) {
                   no icon, no instruction: the count is the 據點's business. */}
               <p className="card__hint">{strings.setup.fundedNote}</p>
 
+              {/* First run: the 據點 has nobody yet. Say so rather than showing
+                  an empty box — the add form directly below is the answer. */}
+              {sorted.length === 0 && <p className="card__hint card__hint--note">{strings.setup.noEnrolment}</p>}
+
               <ul className="picks">
                 {sorted.map((p) => {
                   const on = attendees.has(p.id)

@@ -135,6 +135,26 @@ export interface SessionDataSource {
 
   /** Fires whenever the record log grows, so surfaces can refetch. */
   subscribeRecords(handler: () => void): Unsubscribe
+
+  /* ── Example data ──────────────────────────────────────────────────────────
+     THE PRODUCT SHIPS EMPTY. No sessions, no participants, no records, ever, on
+     a first load — because a measurement record that nobody produced is an
+     assertion the system cannot justify, and this is the same rule that keeps
+     不可比較 on the sheet and the 14-second threshold out of the product.
+
+     A demo still has to demonstrate, so a worked example is available ON
+     REQUEST. It is opt-in, reversible, and everything it creates carries
+     `Block.isExample` so it is marked wherever it appears — including on paper.
+     ─────────────────────────────────────────────────────────────────────────── */
+
+  /** Whether an example 期 is currently loaded. Drives the control's label. */
+  hasExampleData(): Promise<boolean>
+
+  /** Populate one worked example 期 — 前測, 後測, and every edge case. */
+  loadExampleData(): Promise<void>
+
+  /** Return to empty. Removes everything, example and locally recorded alike. */
+  clearAllData(): Promise<void>
 }
 
 export type TrialId = string

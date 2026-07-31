@@ -142,6 +142,8 @@ export interface SessionIdentity {
   readonly dateIso: string
   readonly status: AssessmentSession['status']
   readonly sessionId: SessionId
+  /** True when the 期 came from 載入示範資料. Rendered as a marker. */
+  readonly isExample: boolean
 }
 
 export function identityOf(
@@ -155,5 +157,6 @@ export function identityOf(
     dateIso: session.dateIso,
     status: session.status,
     sessionId: session.sessionId,
+    isExample: block.isExample === true,
   }
 }

@@ -6,6 +6,8 @@
   "description": "VeloCare Tier 1 — fixed-camera 5x sit-to-stand measurement instrument. Frontend only, fixtures behind SessionDataSource.",
   "scripts": {
     "dev": "vite",
+    "icons": "node scripts/build-icons.mjs --png",
+    "prebuild": "node scripts/build-icons.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"

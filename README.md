@@ -129,27 +129,53 @@ network dependency.
 
 **If a component ever imports `data/fixtures` directly, that is a bug.**
 
+## It ships empty
+
+**On a fresh load the app holds zero measurement records.** No sessions, no participants, no
+history. Verified: with `localStorage` cleared, the storage key is `null`, the session list renders
+zero rows, and the first-run surface explains what a 場次 is before offering the one action.
+
+This file used to seed five 場次 across three 期 with about sixty completed measurements. Every one
+described a trial nobody performed, on a screen whose only job is to report trials that people did
+perform, and the printed sheet would have carried them into a funding report. That is the same
+failure the rest of the product is built to avoid — 不可比較 rather than an unjustifiable
+difference, no 14-second threshold rather than a determination the instrument has no standing to
+make, a refusal to record rather than a guess about which 場次 a trial belongs to. **Do not assert
+what you cannot justify.**
+
+**Every new 場次 starts at 0 measured**, and that is a fact about the log rather than an initial
+value: `progressOf` counts actual records, so there is nothing to seed and nothing to remember not
+to seed. Records are written only for trials performed in this browser, and persisted to
+`localStorage` so a facilitator's morning survives a reload. Records only — no frames, no
+landmarks, nothing that could hold one, by invariant 1.
+
+### 載入示範資料 — the demo, on request
+
+A worked example 期 with a 前測, a 後測 and every edge case (未完成五次, 手部支撐, 無法進行,
+a tracking-loss void and restart, a correction on a completed trial). **Off until pressed**, with a
+matching control to clear it.
+
+Everything it creates is marked. The 期 carries `isExample`; its participants take `E-` ids rather
+than `P-`, so an example row is distinguishable by id alone in the log, in a console and on paper;
+and a 示範資料 marker renders on the session list, in the context band on every recording surface,
+and **on the printed sheet as a full sentence, above the table**, stating that the numbers may not
+be used for 服務成果, 給付申請 or any 評估. The footer repeats it. A badge would not survive being
+read cold by someone who was not in the room.
+
 ## What is simulated
 
-- **Everything numeric.** Rep detection, timings, seat height, tracking state. All scripted in
-  `src/data/fixtures.ts`.
-- **Two 據點, three 期, five 場次.** Fictional throughout, with pseudonymous participants
-  (`P-0041`…`P-0055` and `P-0061`…`P-0072`) carrying staff-style display labels. No real person is
-  represented; there are no identity fields anywhere in the type system, by invariant.
-
-  | 期 | 場次 | | |
-  |---|---|---|---|
-  | 115 年度第 3 期 · 示範社區照顧關懷據點 | 前測 115/05/04 | 已結束 | 12 人, all assessed |
-  | | 後測 115/07/27 | **進行中** | 12 人, 7 assessed |
-  | 115 年度第 1 期 · 示範第二關懷據點 | 前測 115/07/30 | **進行中** | 10 人, 5 assessed |
-  | 114 年度第 3 期 · 示範社區照顧關懷據點 | 前測 114/10/06 | 已結束 | 10 人, all assessed |
-  | | 後測 114/12/29 | 已結束 | 9 人 — one absent, so the sheet reads 未記錄 |
-
-  Two are open, mid-progress, at different 據點 and different 階段: the exact configuration in
-  which a trial could be recorded into the wrong place.
-- **The record log.** Pre-populated append-only. The open 後測 carries one of every edge case,
-  including a tracking-loss void followed by a successful restart and a correction stacked on a
-  completed trial.
+- **The trial itself, and only the trial.** Rep detection, timings, seat height and tracking state
+  come from scripts in `src/data/fixtures.ts` because there is no pose pipeline yet — disclosed by
+  the 示範模式 badge on every surface and in the sheet's footer. The distinction that matters: this
+  measurement is simulated *and says so*; a seeded history would have been fabricated *and would
+  not have*.
+- **The example 期, when loaded.** One 期 at a fictional 據點, twelve pseudonymous participants
+  (`E-0001`…`E-0012`) with staff-style display labels. No real person is represented; there are no
+  identity fields anywhere in the type system, by invariant. 前測 fully assessed so the sheet has a
+  real comparison to show, 後測 open and mid-rotation at 7 of 12 so the example lands on a session
+  that can actually be worked.
+- **The record log is NOT pre-populated.** It starts empty and only ever contains trials performed
+  in this browser, plus the example 期 if someone loaded it.
 
 ## What is real
 
@@ -291,6 +317,26 @@ Measured in a headless browser, not eyeballed.
 - **Breadcrumb, second pass.** Links now 15 px `--ink-secondary`, separators muted, current segment
   `--accent` at 700 — all four nav targets still measure exactly **64 px**, fill and border fully
   transparent. Zero controls under 64 px across all seven surfaces.
+- **Zero records on a fresh load**, verified directly: `localStorage` cleared → storage key `null`,
+  zero session rows, first-run surface shown. Loading the example writes exactly one 期 and two 場次,
+  both marked; clearing returns to zero rows and zero log records, and both states survive a reload.
+  A newly created 場次 reads **已量測 0 / 1** with a participant enrolled and no records.
+- **Example marking reaches paper.** One A4 page with the notice present, in the head above the
+  table and again in the footer, 108 text nodes all chroma 0 on a white ground. It costs one row of
+  capacity — **12 participants for an example sheet, 13 for a plain one**, both measured by
+  rendering to A4 and counting pages. A first attempt gave the notice its own box, which cost
+  12.7 mm and produced a two-page sheet; folding it into the existing metadata block costs a single
+  line instead.
+- **No resting boxes on nav.** All five header/nav items — back control, both breadcrumb links, the
+  current segment and the scenario toggle — measure exactly **64 px** with `background` and
+  `border-color` both fully transparent at rest. Every one has a `:hover, :focus-visible` rule with
+  the same tint and colour shift, and focus additionally carries the global 3 px ring, so a keyboard
+  user gets strictly more affordance than a pointer user. The current segment keeps `aria-current`.
+- **Icons come from one source.** `src/assets/mark.json` is imported by `Logo.tsx` and read by
+  `scripts/build-icons.mjs`, which emits `favicon.svg` plus 180/192/512 PNGs. No second copy of the
+  path data exists, so the tab icon cannot drift from the header mark — which is what happened when
+  the favicon held its own copy. All four are cache-busted with `?v=3` and Vite rewrites them to
+  `./` for the relative base.
 - **Reduced motion.** All four animations collapse to instant state swaps; content is never gated
   behind a transition.
 - **No horizontal overflow** at 1280×800 or 1600×900.

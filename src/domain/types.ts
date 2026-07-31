@@ -70,6 +70,20 @@ export interface Block {
   readonly startedIso: string
   /** Everyone ENROLLED in the 期. A superset of any one session's attendees. */
   readonly participants: readonly Participant[]
+  /**
+   * True for a 期 created by 載入示範資料 — a worked example, not a record of
+   * anything that happened.
+   *
+   * MARKED AT 期 LEVEL, DELIBERATELY. A session inside an example 期 sits beside
+   * fabricated pre-test times and is compared against them, so marking only the
+   * fabricated rows would let a real trial performed inside the example produce
+   * a 差值 against invented data with nothing on the sheet to say so. The whole
+   * 期 is marked, everywhere it appears, including on paper.
+   *
+   * Optional so a store that has no notion of examples — the October pipeline —
+   * simply never sets it.
+   */
+  readonly isExample?: boolean
 }
 
 /**

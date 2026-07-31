@@ -28,6 +28,7 @@
    to is worth more than 56px of a surface whose largest element is 192px.
    ───────────────────────────────────────────────────────────────────────────── */
 
+import { ExampleTag } from './ExampleTag'
 import { sessionStatusDisplay } from '../domain/display'
 import { rocDate } from '../domain/dates'
 import type { SessionIdentity } from '../domain/sessions'
@@ -68,6 +69,11 @@ export function SessionBand({
       <span className="sband__status">
         <StateChip display={sessionStatusDisplay(identity.status)} size="row" />
       </span>
+
+      {/* Every surface that can record carries the band, so marking it here
+          marks the roster, the trial, the result and the participant record in
+          one place. The sheet marks itself — paper leaves the building. */}
+      <ExampleTag block={{ isExample: identity.isExample }} />
 
       {/* Announced, not merely styled. A switch that only changed a colour would
           be exactly the silent change this band exists to prevent. */}

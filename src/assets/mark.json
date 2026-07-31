@@ -1,0 +1,17 @@
+{
+  "_comment": "THE SINGLE SOURCE OF THE MARK. Logo.tsx imports this; scripts/build-icons.mjs reads the same file to emit public/favicon.svg and the PNGs. There is no second copy of the path data anywhere, so it cannot drift. Concept and rationale: DESIGN.md, 'The mark'. The caliper end-stops are the idea — without them the shape is a motion swoosh.",
+  "viewBox": "0 0 92 92",
+  "strokeLinecap": "round",
+  "strokeLinejoin": "round",
+  "paths": [
+    { "d": "M10 74 L26 74 C46 74 46 18 66 18 L82 18", "strokeWidth": 9, "role": "hip-height trace: seated, rise, standing" },
+    { "d": "M10 62 L10 86 M82 6 L82 30", "strokeWidth": 6.5, "role": "caliper end-stops at the two heights" }
+  ],
+  "icon": {
+    "_comment": "Favicon-only. A standalone SVG has no context to inherit, so currentColor would resolve to the UA text colour and vanish on a dark tab strip. sRGB readbacks of the design tokens.",
+    "padding": 13,
+    "radius": 24,
+    "light": { "ground": "#f4f0e6", "mark": "#004f96" },
+    "dark": { "ground": "#18222f", "mark": "#fbf9f3" }
+  }
+}

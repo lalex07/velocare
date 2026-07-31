@@ -20,6 +20,7 @@
    feature. See `.logo__mark` in app.css for the measured ratio.
    ───────────────────────────────────────────────────────────────────────────── */
 
+import mark from '../assets/mark.json'
 import { strings } from '../i18n/strings'
 
 /**
@@ -31,18 +32,25 @@ import { strings } from '../i18n/strings'
  */
 export function LogoMark({ className }: { className?: string }) {
   return (
+    /* Geometry comes from `src/assets/mark.json`, which is ALSO what
+       `scripts/build-icons.mjs` reads to emit the favicon and the PNGs. One
+       source, so the tab icon cannot drift away from the header mark — which is
+       exactly what happened when the favicon held its own copy of the path. */
     <svg
-      viewBox="0 0 92 92"
+      viewBox={mark.viewBox}
       className={className}
       aria-hidden="true"
       focusable="false"
     >
-      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-        {/* The trace: seated height, rise, standing height. */}
-        <path d="M10 74 L26 74 C46 74 46 18 66 18 L82 18" strokeWidth="9" />
-        {/* The two caliper end-stops. Thinner than the trace, as a dimension
-            line's ticks are thinner than the thing being dimensioned. */}
-        <path d="M10 62 L10 86 M82 6 L82 30" strokeWidth="6.5" />
+      <g
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap={mark.strokeLinecap as 'round'}
+        strokeLinejoin={mark.strokeLinejoin as 'round'}
+      >
+        {mark.paths.map((p) => (
+          <path key={p.d} d={p.d} strokeWidth={p.strokeWidth} />
+        ))}
       </g>
     </svg>
   )

@@ -755,6 +755,44 @@ That line costs the sheet **one row of one-page capacity** — 14 participants d
 to 13, measured by rendering to A4 and counting pages, not estimated. A first
 draft boxed it and cost two. The minimum funded class is 10.
 
+## The empty default, and the example
+
+**The product ships with zero measurement records**, and the first-run surface is
+therefore a real surface rather than a fallback. It says what the screen *is* —
+that a 場次 is the thing every measurement gets recorded against — before it says
+what to press, because nobody opening the appliance for the first time knows that
+yet. The primary action stays in the rail like every other surface; putting a
+second 新增場次 in the body was a second answer to a question that should have
+exactly one.
+
+The example loader sits below a rule, as an aside, with a sentence explaining
+what it is. It is never the way in.
+
+### Marking is at 期 level, and it reaches paper
+
+A 期 created by 載入示範資料 carries `isExample`, and that is rendered by one
+component (`ExampleTag`) so the wording cannot drift between surfaces: session
+list, context band — which every recording surface already carries — and the
+printed sheet.
+
+Marked at 期 level rather than per record, deliberately. A real trial performed
+inside an example 期 is compared against fabricated pre-test times and appears on
+a sheet beside them, so marking only the fabricated rows would let a genuine
+measurement produce a 差值 against invented data with nothing on the paper to say
+so.
+
+**On paper it is a sentence, not a badge.** The sheet leaves the building, filed
+with a funding report by someone who was not in the room, so the marking has to
+survive being read cold and has to say what the numbers may *not* be used for —
+服務成果, 給付申請, 評估. It sits above the table, because a reader must meet it
+before the numbers, and the footer repeats it.
+
+It costs one row of one-page capacity: **12 participants on an example sheet
+against 13 on a plain one.** Measured by rendering to A4 and counting pages. A
+first attempt gave the notice its own bordered block, which cost 12.7 mm and
+produced a two-page sheet; folding it into the existing metadata block — the box
+grows to contain both — costs a single line.
+
 ## Session setup
 
 Reached from the session list, not the entry point any more. Where 據點, 期 (year

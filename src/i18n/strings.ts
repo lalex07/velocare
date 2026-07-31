@@ -21,6 +21,23 @@ export interface Strings {
     readonly badge: string
     readonly detail: string
   }
+  /* ── Example data ─────────────────────────────────────────────────────────
+     The app ships EMPTY. A worked example is available on request, and every
+     string here exists so a viewer can never mistake it for a record of a real
+     measurement — on screen or on paper. ─────────────────────────────────── */
+  readonly example: {
+    /** The marker rendered wherever an example 期 appears. */
+    readonly tag: string
+    readonly load: string
+    readonly clear: string
+    readonly loadHint: string
+    readonly clearTitle: string
+    readonly clearBody: string
+    readonly clearConfirm: string
+    readonly cancel: string
+    /** Stated in full on the printed sheet. Not a badge — a sentence. */
+    readonly sheetNotice: string
+  }
   readonly phase: {
     readonly pre: string
     readonly post: string
@@ -102,6 +119,10 @@ export interface Strings {
     readonly attendeeCount: (n: number) => string
     readonly emptyTitle: string
     readonly emptyBody: string
+    /** First run. Not a blank page: what this screen is, and the one action. */
+    readonly firstRunTitle: string
+    readonly firstRunBody: string
+    readonly firstRunExample: string
 
     readonly endAction: string
     readonly endTitle: string
@@ -143,6 +164,8 @@ export interface Strings {
     readonly phaseChoice: string
     readonly attendeesTitle: string
     readonly attendeesHint: string
+    /** Shown when the 據點 has nobody enrolled yet — the first-run path. */
+    readonly noEnrolment: string
     readonly selectAll: string
     readonly selectNone: string
     readonly enrolledCount: (n: number) => string
@@ -371,6 +394,20 @@ const zhTW: Strings = {
     assessmentName: '五次起立坐下量測',
   },
 
+  example: {
+    tag: '示範資料',
+    load: '載入示範資料',
+    clear: '清除示範資料',
+    // States what it is and what it is not, at the point of pressing.
+    loadHint: '載入一組完整的範例期別，含前測、後測與各種紀錄結果，供操作練習與展示使用。範例資料會清楚標示，不代表任何實際量測。',
+    clearTitle: '清除所有資料',
+    clearBody: '將移除本機所有場次與量測紀錄，包含示範資料與在本機實際記錄的資料。此操作無法復原。',
+    clearConfirm: '確認清除',
+    cancel: '取消',
+    sheetNotice:
+      '本表內容為示範用範例資料，並非任何實際量測之紀錄，不得作為服務成果、給付申請或任何評估之依據。',
+  },
+
   demo: {
     // Honest marker. This must never read as a working measurement system.
     //
@@ -463,6 +500,11 @@ const zhTW: Strings = {
     attendeeCount: (n) => `出席 ${n} 人`,
     emptyTitle: '尚無任何場次',
     emptyBody: '請先新增一個場次，設定據點、期別與階段。',
+    // First run. The screen has to say what it is before it says what to press.
+    firstRunTitle: '尚無任何場次',
+    firstRunBody:
+      '本畫面列出這台機器上的所有場次。每個場次對應一個據點、一個期別與一個階段（前測或後測），量測紀錄都會記在所選定的場次之下。目前尚無任何場次與紀錄。',
+    firstRunExample: '若只是想先看看操作流程，可載入一組範例資料。',
 
     endAction: '結束本場',
     endTitle: '結束本場',
@@ -509,6 +551,7 @@ const zhTW: Strings = {
     phaseChoice: '本場階段',
     attendeesTitle: '本場出席名單',
     attendeesHint: '勾選今天到場的長輩。未到場者仍在收案名單內。',
+    noEnrolment: '本據點尚無收案名單。請於下方新增長輩後，再勾選今天到場的人。',
     selectAll: '全選',
     selectNone: '全部取消',
     enrolledCount: (n) => `收案 ${n} 人`,

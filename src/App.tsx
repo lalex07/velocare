@@ -36,6 +36,7 @@ import { Sheet } from './surfaces/Sheet'
 import { Trial } from './surfaces/Trial'
 import { CorrectionDialog } from './surfaces/dialogs/CorrectionDialog'
 import { SessionStatusDialog } from './surfaces/dialogs/SessionStatusDialog'
+import { ClearDataDialog } from './surfaces/dialogs/ClearDataDialog'
 
 /**
  * The surfaces nest, and the header renders that nesting as a path:
@@ -90,8 +91,16 @@ export function App() {
      resolving the name at activation time produced no announcement at all for
      exactly the case where one matters most. Resolved at render instead. */
   const [announcing, setAnnouncing] = useState<SessionId | null>(null)
+  const [clearing, setClearing] = useState(false)
+  const [hasExample, setHasExample] = useState(false)
 
   const { blocks, sessions, allResolved, loaded } = useSessions()
+
+  /* Re-asked whenever the log changes rather than held as derived state, so the
+     control's label can never disagree with what is actually loaded. */
+  useEffect(() => {
+    void src.hasExampleData().then(setHasExample)
+  }, [src, blocks])
 
   // The scenario switcher needs the fixture-only `nextScript` knob. Narrowed
   // here rather than widening SessionDataSource, so the October implementation
@@ -217,6 +226,22 @@ export function App() {
     },
   }
 
+  async function loadExample() {
+    await src.loadExampleData()
+    setHasExample(true)
+  }
+
+  /* Clears EVERYTHING, example and locally recorded alike, and says so in the
+     dialog. A control that silently spared "real" records would be worse: it
+     would leave a facilitator unsure what is still on the machine. */
+  async function clearAll() {
+    setClearing(false)
+    setActiveSessionId(null)
+    setView({ kind: 'sessions' })
+    await src.clearAllData()
+    setHasExample(false)
+  }
+
   async function beginSession(setup: SessionSetup) {
     const opened = await src.openSession(setup)
     activate(opened, { kind: 'roster' })
@@ -321,14 +346,24 @@ export function App() {
 
   if (view.kind === 'sessions') {
     return shell(
-      <SessionList
-        blocks={blocks}
-        sessions={sessions}
-        allResolved={allResolved}
-        activeSessionId={activeSessionId}
-        onOpen={(s) => activate(s, { kind: 'roster' })}
-        onNew={() => setView({ kind: 'setup' })}
-      />,
+      <>
+        <SessionList
+          blocks={blocks}
+          sessions={sessions}
+          allResolved={allResolved}
+          activeSessionId={activeSessionId}
+          hasExample={hasExample}
+          onOpen={(s) => activate(s, { kind: 'roster' })}
+          onNew={() => setView({ kind: 'setup' })}
+          onLoadExample={() => void loadExample()}
+          onClearData={() => setClearing(true)}
+        />
+        <ClearDataDialog
+          open={clearing}
+          onCancel={() => setClearing(false)}
+          onConfirm={() => void clearAll()}
+        />
+      </>,
     )
   }
 

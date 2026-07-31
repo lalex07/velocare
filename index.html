@@ -8,13 +8,19 @@
       name="description"
       content="VeloCare Tier 1 UI prototype — automated 5x sit-to-stand assessment for Taiwanese community elder-care centres. Simulated data."
     />
-    <!-- A file rather than the percent-encoded data URI this replaces. Same
-         self-containment either way — it is bundled into dist/ and served from
-         the same origin, so the appliance still needs no network — but the mark
-         is now readable, commentable, and diffable in one place instead of
-         hiding as an unreviewable blob. Geometry matches Logo.tsx; see the note
-         in favicon.svg for why that ONE copy carries literal colours. -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- All GENERATED from src/assets/mark.json by scripts/build-icons.mjs, the
+         same file Logo.tsx imports — so the tab icon cannot drift away from the
+         header mark. Bundled into dist/ and served same-origin, so the appliance
+         still needs no network.
+
+         `?v=` is a cache buster, and it is not decorative: a favicon is one of
+         the most aggressively cached resources a browser has, and the previous
+         mark persisted in tabs across reloads and a hard refresh. Bump it
+         whenever the icons are regenerated. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=3" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=3" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3" />
     <title>VeloCare — 五次起立坐下量測</title>
   </head>
   <body>

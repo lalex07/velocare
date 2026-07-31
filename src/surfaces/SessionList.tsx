@@ -18,6 +18,7 @@
    product does not have to invent a sixth colour channel.
    ───────────────────────────────────────────────────────────────────────────── */
 
+import { ExampleTag } from '../components/ExampleTag'
 import { RailButton } from '../components/RailButton'
 import { StateChip } from '../components/StateChip'
 import { describeSession } from '../components/SessionBand'
@@ -33,15 +34,21 @@ export function SessionList({
   sessions,
   allResolved,
   activeSessionId,
+  hasExample,
   onOpen,
   onNew,
+  onLoadExample,
+  onClearData,
 }: {
   blocks: readonly Block[]
   sessions: readonly AssessmentSession[]
   allResolved: ReadonlyMap<SessionId, readonly ResolvedTrial[]>
   activeSessionId: SessionId | null
+  hasExample: boolean
   onOpen: (session: AssessmentSession) => void
   onNew: () => void
+  onLoadExample: () => void
+  onClearData: () => void
 }) {
   const ordered = listOrder(sessions)
   const open = ordered.filter((s) => s.status === 'open')
@@ -59,7 +66,10 @@ export function SessionList({
     return (
       <li className={isActive ? 'srow srow--active' : 'srow'} key={s.sessionId}>
         <span className="srow__site">{block.siteName}</span>
-        <span className="srow__block">{block.blockName}</span>
+        <span className="srow__block">
+          {block.blockName}
+          <ExampleTag block={block} />
+        </span>
         {/* 階段 gets the strongest weight in the row for the same reason it leads
             the context band: 前測 and 後測 are the pair that gets confused. */}
         <span className="srow__phase">
@@ -102,9 +112,23 @@ export function SessionList({
           <p className="slist__lede">{strings.session.listLede}</p>
 
           {total === 0 ? (
-            <div className="cue">
-              <p className="cue__title">{strings.session.emptyTitle}</p>
-              <p className="cue__hint">{strings.session.emptyBody}</p>
+            /* FIRST RUN. Not a blank page and not a shrug: it says what this
+               screen is before it says what to press, because someone opening
+               the appliance for the first time does not yet know that a 場次 is
+               the thing every measurement gets recorded against. */
+            <div className="firstrun">
+              <h2 className="firstrun__title">{strings.session.firstRunTitle}</h2>
+              <p className="firstrun__body">{strings.session.firstRunBody}</p>
+              {/* No 新增場次 button here. The rail carries the primary forward
+                  action on every surface in this product, and two of them is a
+                  second answer to a question that should have exactly one. The
+                  example loader below is a different question, so it gets its
+                  own control, next to the sentence that explains it. */}
+              <p className="firstrun__aside">{strings.session.firstRunExample}</p>
+              <RailButton variant="quiet" onClick={onLoadExample}>
+                {strings.example.load}
+              </RailButton>
+              <p className="firstrun__hint">{strings.example.loadHint}</p>
             </div>
           ) : (
             <>
@@ -132,6 +156,19 @@ export function SessionList({
         </div>
         <div className="rail__spacer" />
         <div className="rail__actions">
+          {/* Opt-in, reversible, and never both at once: the example either is
+              loaded or is not, and the control says which. */}
+          {hasExample ? (
+            <RailButton variant="quiet" onClick={onClearData}>
+              {strings.example.clear}
+            </RailButton>
+          ) : (
+            total > 0 && (
+              <RailButton variant="quiet" onClick={onLoadExample}>
+                {strings.example.load}
+              </RailButton>
+            )
+          )}
           <RailButton variant="primary" icon="roster" onClick={onNew}>
             {strings.session.newSession}
           </RailButton>

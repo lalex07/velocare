@@ -126,16 +126,22 @@
   width: var(--tap);
   height: var(--tap);
   flex: 0 0 auto;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--r);
   background: transparent;
   color: var(--ink-secondary);
-  transition: background var(--dur-fast) var(--ease-out);
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
 
-.hdr__up:hover {
+/* Hover and focus-visible get the SAME tint and the same colour shift, and
+   focus additionally carries the global 3px ring — so a keyboard user gets
+   strictly more affordance than a pointer user, never less. */
+.hdr__up:hover,
+.hdr__up:focus-visible {
   background: var(--blue-50);
-  border-color: var(--line-strong);
+  color: var(--ink);
 }
 
 .trail {
@@ -344,6 +350,77 @@
   font-weight: 700;
   color: var(--ink);
   letter-spacing: 0.01em;
+}
+
+/* ─── 示範資料 marker ────────────────────────────────────────────────────────
+   Rendered wherever an example 期 appears. NOT `no-print` and not decorative:
+   the whole point is that a viewer cannot mistake example numbers for a record
+   of a real measurement. See ExampleTag.tsx, and `.sheet__example` in print.css
+   for the printed form, which is a sentence rather than a badge.
+
+   Outlined rather than filled, and in --ink rather than a status hue: it is not
+   an outcome, not a machine state, and must not be mistaken for either.
+   Measured 15.24:1 on the header ground.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.extag {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-left: var(--s-2);
+  padding: 0.1em 0.5em;
+  border: 1px solid var(--ink);
+  border-radius: var(--r-xs);
+  font-size: var(--t-fac-sm);
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* ─── First run ──────────────────────────────────────────────────────────────
+   The app ships EMPTY, so this is the first thing anyone sees. It says what the
+   screen is before it says what to press: a 場次 is the thing every measurement
+   gets recorded against, and nobody opening the appliance for the first time
+   knows that yet. The example loader sits below the primary action and below a
+   rule, so it reads as an aside rather than as the way in.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.firstrun {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-6) 0;
+  max-width: 68ch;
+}
+
+.firstrun__title {
+  font-size: var(--t-fac-xl);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.firstrun__body {
+  font-size: var(--t-fac);
+  line-height: 1.7;
+  color: var(--ink-secondary);
+  text-wrap: pretty;
+}
+
+.firstrun__aside {
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line);
+  width: 100%;
+  font-size: var(--t-fac);
+  color: var(--ink-secondary);
+}
+
+.firstrun__hint {
+  font-size: var(--t-fac-sm);
+  line-height: 1.6;
+  color: var(--ink-muted);
+  text-wrap: pretty;
 }
 
 /* ─── Icons ──────────────────────────────────────────────────────────────── */
